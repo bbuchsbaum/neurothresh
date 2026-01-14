@@ -1,0 +1,146 @@
+---
+title: "Neurothresh: LR-MFT Hierarchical Thresholding"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Neurothresh: LR-MFT Hierarchical Thresholding}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Overview
+
+`neurothresh` implements likelihood-ratio matched-filter thresholding (LR-MFT)
+with hierarchical stepdown inference for neuroimaging statistical maps. The
+core workflow is:
+
+1. Canonicalize the statistic map to Z-scores.
+2. Define a prior over voxels (uniform or prior volume).
+3. Run hierarchical testing using stepdown or alpha-spending.
+4. Report significant regions/voxels with FWER control.
+
+This vignette focuses on the API and key concepts. The computational workflow
+relies on `neuroim2` objects for storage and indexing.
+
+## Key Functions
+
+- `hier_scan()` - main entry point for LR-MFT analysis.
+- `score_set()` / `score_set_stabilized()` - prior-weighted statistics for a set.
+- `canonicalize_stat()` - convert t or -log10(p) maps to Z.
+- `wy_stepdown()` - Westfall-Young stepdown procedure.
+- `octree_scan_fwer()` - multiscale dyadic cube max-scan (U0-only).
+- `octree_scan_stepdown()` - multiscale dyadic cube scan with hierarchical step-down (U0-only).
+- `estimate_fwhm_vox()` - map-only FWHM estimator for correlated null simulation.
+- Baseline methods: `rft_peak_fwer()`, `rft_cluster_fwer()`, `tfce_fwer()`,
+  and `cluster_fdr()`.
+
+## Example Workflow (Pseudo-code)
+
+```{r example, eval=FALSE}
+# library(neuroim2)
+# library(neurothresh)
+#
+# # Load a statistical map (Z)
+# z_map <- neuroim2::read_vol("zstat1.nii.gz")
+#
+# # Optional: provide a prior volume (same space as z_map)
+# prior_map <- neuroim2::read_vol("prior.nii.gz")
+#
+# # Run hierarchical LR-MFT
+# result <- hier_scan(
+#   z_map,
+#   prior_vol = prior_map,
+#   alpha = 0.05,
+#   kappa = c(0.5, 1.0, 2.0),
+#   n_perm = 1000,
+#   method = "stepdown"
+# )
+#
+# summary(result)
+```
+
+## Two-Sided Inference
+
+Two-sided inference is supported by setting `two_sided = TRUE`. Internally,
+this uses absolute Z-scores for thresholding.
+
+```{r two_sided, eval=FALSE}
+# result <- hier_scan(z_map, two_sided = TRUE, n_perm = 1000)
+```
+
+## Map-only Calibration for Multiscale Scans
+
+If you only have a single group-level statistic map, voxelwise sign-flips do
+**not** preserve the null spatial covariance. This can be unsafe for
+region/multiscale statistics that aggregate across voxels.
+
+For `octree_scan_fwer()` and `octree_scan_stepdown()`, you have two safer options:
+
+1. Supply `null_fun` based on subject-level or residual-based resampling (recommended).
+2. Use `null = "mc_fwhm"` to calibrate via correlated Monte Carlo using an
+   estimated Gaussian smoothness (FWHM) from the map.
+3. Use `null = "mc_acf"` with user-supplied mixed-ACF parameters (Gaussian + long tail).
+
+```{r octree_scan_mc, eval=FALSE}
+# z <- array(rnorm(50 * 50 * 50), dim = c(50, 50, 50))
+#
+# # Map-only correlated null using estimated smoothness:
+# res <- octree_scan_fwer(
+#   z,
+#   n_perm = 2000,
+#   null = "mc_fwhm"      # uses estimate_fwhm_vox() if fwhm_vox is NULL
+# )
+#
+# # Map-only correlated null with a simple mixed ACF (Gaussian + long tail):
+# acf <- list(a = 0.7, fwhm_vox = c(4, 4, 4), lambda_vox = c(2, 2, 2))
+# res_acf <- octree_scan_fwer(z, n_perm = 2000, null = "mc_acf", acf_params = acf)
+#
+# # Hierarchical step-down (often higher power than a single global maxT threshold):
+# res2 <- octree_scan_stepdown(
+#   z,
+#   n_perm = 2000,
+#   null = "mc_fwhm",
+#   report = "coarsest"
+# )
+```
+
+## Subject-Level Resampling (Recommended)
+
+When you have subject-level contrast maps, use subject-level sign-flips (one-sample)
+to preserve spatial covariance under the null:
+
+```{r subject_null, eval=FALSE}
+# subj <- list_of_subject_contrast_maps  # each an array or NeuroVol
+# sf <- make_null_fun_subject_signflip(subj, seed = 1)
+# res <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 5000, null_fun = sf$null_fun)
+```
+
+## Baseline Methods
+
+`neurothresh` includes baseline comparisons that match standard neuroimaging
+practice. These are useful for benchmarking LR-MFT output against legacy
+methods.
+
+```{r baseline, eval=FALSE}
+# rft <- rft_peak_fwer(z_map, fwhm_mm = 8)
+# tfce <- tfce_fwer(z_map, n_perm = 5000)
+# fdr <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05, p_method = "rft")
+```
+
+## Notes
+
+- LR-MFT is most powerful for spatially extended effects.
+- The stepdown method gives strong FWER control across a family of regions.
+- The alpha-spending mode is more permissive but still controls FWER under
+  the hierarchical nesting assumption.
+
+For full algorithmic details, see the discussion documents in
+`docs/discussion/`.

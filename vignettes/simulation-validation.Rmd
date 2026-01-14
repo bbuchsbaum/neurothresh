@@ -1,0 +1,197 @@
+---
+title: "Simulation Validation: FWER and Power"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Simulation Validation: FWER and Power}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
+)
+```
+
+## Overview
+
+This vignette provides small-scale simulations to build confidence in:
+
+- FWER control under the global null.
+- Improved power for spatially extended signals compared to max-based rules.
+
+We use small synthetic grids for speed. These are not meant to replace
+publication-scale validation, but to provide reproducible sanity checks.
+
+Important note: for region/multiscale statistics, the null **must preserve
+spatial covariance**. Voxelwise sign-flips applied directly to a single group
+map generally do not preserve spatial covariance.
+
+## Helper Functions (legacy toy example)
+
+```{r helpers}
+set.seed(123)
+
+make_kernel <- function(radius = 2, sigma = 1) {
+  ax <- seq(-radius, radius)
+  g <- outer(ax, ax, function(x, y) exp(-(x^2 + y^2) / (2 * sigma^2)))
+  g / sum(g)
+}
+
+smooth_field <- function(z, kernel) {
+  nr <- nrow(z); nc <- ncol(z)
+  kr <- nrow(kernel); kc <- ncol(kernel)
+  pad_r <- floor(kr / 2)
+  pad_c <- floor(kc / 2)
+
+  zpad <- matrix(0, nrow = nr + 2 * pad_r, ncol = nc + 2 * pad_c)
+  zpad[(pad_r + 1):(pad_r + nr), (pad_c + 1):(pad_c + nc)] <- z
+
+  out <- matrix(0, nrow = nr, ncol = nc)
+  for (i in seq_len(nr)) {
+    for (j in seq_len(nc)) {
+      block <- zpad[i:(i + kr - 1), j:(j + kc - 1)]
+      out[i, j] <- sum(block * kernel)
+    }
+  }
+  out
+}
+
+insert_blob <- function(z, center, radius = 2, amp = 1.5) {
+  nr <- nrow(z); nc <- ncol(z)
+  rr <- seq_len(nr); cc <- seq_len(nc)
+  mask <- outer(rr, cc, function(i, j) (i - center[1])^2 + (j - center[2])^2 <= radius^2)
+  z + amp * mask
+}
+
+softmax_score <- function(z, kappa = 1) {
+  a <- kappa * as.vector(z)
+  a_max <- max(a)
+  a_max + log(mean(exp(a - a_max)))
+}
+```
+
+## Map-only correlated null calibration (recommended)
+
+The functions `octree_scan_fwer()` and `octree_scan_stepdown()` support a
+map-only correlated Monte Carlo mode: `null = "mc_fwhm"`. If you do not supply
+`fwhm_vox`, the function estimates it from the map using `estimate_fwhm_vox()`.
+
+If you have mixed-ACF parameters from upstream tools (e.g., Gaussian + long-tail),
+you can use `null = "mc_acf"` with `acf_params` instead of assuming a Gaussian ACF.
+
+```{r octree_null_mc, message=FALSE, warning=FALSE}
+library(neurothresh)
+
+set.seed(1)
+z_null <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+
+# Use a correlated null model (Gaussian ACF) calibrated from the map.
+res <- octree_scan_fwer(
+  z_null,
+  n_perm = 100,
+  null = "mc_fwhm"
+)
+
+str(res$u)
+```
+
+## Power sanity check (blob vs max)
+
+```{r octree_power, eval=FALSE}
+insert_cube <- function(z, x0, x1, y0, y1, z0, z1, amp = 2) {
+  z[x0:x1, y0:y1, z0:z1] <- z[x0:x1, y0:y1, z0:z1] + amp
+  z
+}
+
+set.seed(2)
+B <- 100
+z_base <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+
+# Threshold from correlated MC null:
+thr_u0 <- octree_scan_fwer(z_base, n_perm = 2000, null = "mc_fwhm")$u
+
+# Peak threshold from correlated MC null (max voxel):
+max_null <- replicate(2000, max(array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))))
+thr_max <- quantile(max_null, 0.95)
+
+rej_u0 <- 0
+rej_max <- 0
+
+for (b in seq_len(B)) {
+  z <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+  z <- insert_cube(z, 9, 12, 9, 12, 9, 12, amp = 1.5)
+  rej_u0 <- rej_u0 + (octree_scan_fwer(z, n_perm = 1, null = "mc_fwhm")$M_obs >= thr_u0)
+  rej_max <- rej_max + (max(z) >= thr_max)
+}
+
+c(octree_u0 = rej_u0 / B, peak_max = rej_max / B)
+```
+
+## Legacy 2D toy (softmax)
+
+```{r fwer}
+B <- 200
+n <- 30
+kernel <- make_kernel(radius = 2, sigma = 1)
+
+scores <- numeric(B)
+for (b in seq_len(B)) {
+  z <- matrix(rnorm(n * n), nrow = n)
+  z <- smooth_field(z, kernel)
+  scores[b] <- softmax_score(z, kappa = 1)
+}
+
+# Null threshold for alpha=0.05
+thr <- quantile(scores, probs = 0.95)
+
+# Estimate FWER by re-simulating
+B2 <- 200
+fp <- 0
+for (b in seq_len(B2)) {
+  z <- matrix(rnorm(n * n), nrow = n)
+  z <- smooth_field(z, kernel)
+  fp <- fp + (softmax_score(z, kappa = 1) >= thr)
+}
+
+fwer_est <- fp / B2
+fwer_est
+```
+
+## Power Comparison
+
+```{r power}
+B <- 200
+amp <- 1.5
+center <- c(15, 15)
+
+power_soft <- 0
+power_max <- 0
+
+# Use the same null threshold for both statistics
+thr_soft <- thr
+thr_max <- quantile(replicate(B, {
+  z <- smooth_field(matrix(rnorm(n * n), nrow = n), kernel)
+  max(z)
+}), probs = 0.95)
+
+for (b in seq_len(B)) {
+  z <- smooth_field(matrix(rnorm(n * n), nrow = n), kernel)
+  z <- insert_blob(z, center, radius = 2, amp = amp)
+  power_soft <- power_soft + (softmax_score(z, kappa = 1) >= thr_soft)
+  power_max <- power_max + (max(z) >= thr_max)
+}
+
+c(softmax = power_soft / B, max = power_max / B)
+```
+
+## Notes
+
+- The 3D examples here are intentionally tiny and use small Monte Carlo counts.
+- For real analyses, increase `n_perm` substantially and prefer subject-level
+  resampling (`null_fun`) when available.
+- The map-only `mc_fwhm` mode is model-based: it assumes a stationary Gaussian
+  ACF characterized by FWHM.

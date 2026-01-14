@@ -1,0 +1,38 @@
+Package: neurothresh
+Type: Package
+Title: Neuroimaging Statistical Thresholding with LR-MFT
+Version: 0.1.0
+Authors@R: person("Brad", "Buchsbaum", email = "brad.buchsbaum@gmail.com",
+                  role = c("aut", "cre"))
+Author: Brad Buchsbaum [aut, cre]
+Maintainer: Brad Buchsbaum <brad.buchsbaum@gmail.com>
+Description: Statistical thresholding for neuroimaging data using
+    Likelihood-Ratio Matched-Filter Thresholding (LR-MFT) with hierarchical
+    stepdown inference. Provides theoretically superior alternative to
+    traditional GRF/RFT methods for detecting spatially extended activations.
+    Includes baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.0.0)
+Imports:
+    Rcpp (>= 1.0.0),
+    neuroim2 (>= 0.8.0),
+    methods,
+    stats
+Suggests:
+    neuroatlas (>= 0.1.0),
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+LinkingTo:
+    Rcpp
+Remotes:
+    bbuchsbaum/neuroim2,
+    bbuchsbaum/neuroatlas
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/bbuchsbaum/neurothresh
+BugReports: https://github.com/bbuchsbaum/neurothresh/issues
