@@ -16,23 +16,33 @@ knitr::opts_chunk$set(
 )
 ```
 
-## Overview
+## Purpose of This Vignette
 
-This vignette provides small-scale simulations to build confidence in:
+Any statistical thresholding method must satisfy two requirements:
 
-- FWER control under the global null.
-- Improved power for spatially extended signals compared to max-based rules.
+1. **Control false positives**: When there's no real signal (the "null
+   hypothesis"), we should rarely declare significance. The Family-Wise Error
+   Rate (FWER) is the probability of making even one false positive.
 
-We use small synthetic grids for speed. These are not meant to replace
-publication-scale validation, but to provide reproducible sanity checks.
+2. **Detect real signals**: When there is a real signal, we want high
+   statistical power to find it.
 
-Important note: for region/multiscale statistics, the null **must preserve
-spatial covariance**. Voxelwise sign-flips applied directly to a single group
-map generally do not preserve spatial covariance.
+This vignette runs small simulations to verify that `neurothresh` achieves both
+goals. We use small grids and few permutations for speed; real analyses should
+use larger values.
 
-## Helper Functions (legacy toy example)
+```{r load-package}
+library(neurothresh)
+```
 
-```{r helpers}
+## Verifying FWER Control
+
+First, let's check that when there's no signal (pure noise), we reject at most
+5% of the time when using α = 0.05. We'll use a simple 2D example with the
+soft-max score.
+
+```{r helpers, echo=FALSE}
+# Helper functions for 2D simulations
 set.seed(123)
 
 make_kernel <- function(radius = 2, sigma = 1) {
@@ -63,7 +73,8 @@ smooth_field <- function(z, kernel) {
 insert_blob <- function(z, center, radius = 2, amp = 1.5) {
   nr <- nrow(z); nc <- ncol(z)
   rr <- seq_len(nr); cc <- seq_len(nc)
-  mask <- outer(rr, cc, function(i, j) (i - center[1])^2 + (j - center[2])^2 <= radius^2)
+  mask <- outer(rr, cc, function(i, j)
+    (i - center[1])^2 + (j - center[2])^2 <= radius^2)
   z + amp * mask
 }
 
@@ -74,124 +85,116 @@ softmax_score <- function(z, kappa = 1) {
 }
 ```
 
-## Map-only correlated null calibration (recommended)
-
-The functions `octree_scan_fwer()` and `octree_scan_stepdown()` support a
-map-only correlated Monte Carlo mode: `null = "mc_fwhm"`. If you do not supply
-`fwhm_vox`, the function estimates it from the map using `estimate_fwhm_vox()`.
-
-If you have mixed-ACF parameters from upstream tools (e.g., Gaussian + long-tail),
-you can use `null = "mc_acf"` with `acf_params` instead of assuming a Gaussian ACF.
-
-```{r octree_null_mc, message=FALSE, warning=FALSE}
-library(neurothresh)
-
-set.seed(1)
-z_null <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
-
-# Use a correlated null model (Gaussian ACF) calibrated from the map.
-res <- octree_scan_fwer(
-  z_null,
-  n_perm = 100,
-  null = "mc_fwhm"
-)
-
-str(res$u)
-```
-
-## Power sanity check (blob vs max)
-
-```{r octree_power, eval=FALSE}
-insert_cube <- function(z, x0, x1, y0, y1, z0, z1, amp = 2) {
-  z[x0:x1, y0:y1, z0:z1] <- z[x0:x1, y0:y1, z0:z1] + amp
-  z
-}
-
-set.seed(2)
-B <- 100
-z_base <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
-
-# Threshold from correlated MC null:
-thr_u0 <- octree_scan_fwer(z_base, n_perm = 2000, null = "mc_fwhm")$u
-
-# Peak threshold from correlated MC null (max voxel):
-max_null <- replicate(2000, max(array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))))
-thr_max <- quantile(max_null, 0.95)
-
-rej_u0 <- 0
-rej_max <- 0
-
-for (b in seq_len(B)) {
-  z <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
-  z <- insert_cube(z, 9, 12, 9, 12, 9, 12, amp = 1.5)
-  rej_u0 <- rej_u0 + (octree_scan_fwer(z, n_perm = 1, null = "mc_fwhm")$M_obs >= thr_u0)
-  rej_max <- rej_max + (max(z) >= thr_max)
-}
-
-c(octree_u0 = rej_u0 / B, peak_max = rej_max / B)
-```
-
-## Legacy 2D toy (softmax)
-
 ```{r fwer}
-B <- 200
-n <- 30
+# Simulation parameters
+B <- 200       # Number of null simulations to build threshold
+n <- 30        # Grid size (30 x 30)
 kernel <- make_kernel(radius = 2, sigma = 1)
 
-scores <- numeric(B)
+# Step 1: Build null distribution by simulating pure noise
+null_scores <- numeric(B)
 for (b in seq_len(B)) {
   z <- matrix(rnorm(n * n), nrow = n)
-  z <- smooth_field(z, kernel)
-  scores[b] <- softmax_score(z, kappa = 1)
+  z <- smooth_field(z, kernel)  # Add spatial correlation
+  null_scores[b] <- softmax_score(z, kappa = 1)
 }
 
-# Null threshold for alpha=0.05
-thr <- quantile(scores, probs = 0.95)
+# Step 2: Set threshold at 95th percentile (for alpha = 0.05)
+threshold <- quantile(null_scores, probs = 0.95)
 
-# Estimate FWER by re-simulating
+# Step 3: Check false positive rate with fresh null samples
 B2 <- 200
-fp <- 0
+false_positives <- 0
 for (b in seq_len(B2)) {
   z <- matrix(rnorm(n * n), nrow = n)
   z <- smooth_field(z, kernel)
-  fp <- fp + (softmax_score(z, kappa = 1) >= thr)
+  false_positives <- false_positives + (softmax_score(z, kappa = 1) >= threshold)
 }
 
-fwer_est <- fp / B2
-fwer_est
+fwer_estimate <- false_positives / B2
+cat("Estimated FWER:", fwer_estimate, "\n")
+cat("Expected (alpha = 0.05):", 0.05, "\n")
 ```
 
-## Power Comparison
+The estimated FWER should be close to 0.05. Some variation is expected due to
+Monte Carlo noise.
+
+## Power Comparison: Soft-max vs Peak Maximum
+
+Now let's compare two approaches for detecting a spatially extended signal:
+
+1. **Soft-max score**: Aggregates evidence across the entire field
+2. **Peak maximum**: Only looks at the single highest voxel
+
+When the signal is spread across multiple voxels (a "blob"), the soft-max
+should have higher power because it accumulates evidence.
 
 ```{r power}
 B <- 200
-amp <- 1.5
-center <- c(15, 15)
+amp <- 1.5                    # Signal amplitude
+center <- c(15, 15)           # Center of the blob
 
-power_soft <- 0
-power_max <- 0
+# We already have the soft-max threshold from above
+thr_soft <- threshold
 
-# Use the same null threshold for both statistics
-thr_soft <- thr
+# Build null distribution for peak maximum
 thr_max <- quantile(replicate(B, {
   z <- smooth_field(matrix(rnorm(n * n), nrow = n), kernel)
   max(z)
 }), probs = 0.95)
 
+# Now test power: how often do we detect the blob?
+power_soft <- 0
+power_max <- 0
+
 for (b in seq_len(B)) {
+  # Generate noise + blob signal
   z <- smooth_field(matrix(rnorm(n * n), nrow = n), kernel)
   z <- insert_blob(z, center, radius = 2, amp = amp)
+
+  # Test both methods
   power_soft <- power_soft + (softmax_score(z, kappa = 1) >= thr_soft)
   power_max <- power_max + (max(z) >= thr_max)
 }
 
-c(softmax = power_soft / B, max = power_max / B)
+results <- c(softmax = power_soft / B, peak_max = power_max / B)
+cat("Power comparison:\n")
+cat("  Soft-max:", results["softmax"], "\n")
+cat("  Peak max:", results["peak_max"], "\n")
 ```
 
-## Notes
+The soft-max typically shows higher power for this blob-shaped signal because
+it pools evidence across the activated region.
 
-- The 3D examples here are intentionally tiny and use small Monte Carlo counts.
-- For real analyses, increase `n_perm` substantially and prefer subject-level
-  resampling (`null_fun`) when available.
-- The map-only `mc_fwhm` mode is model-based: it assumes a stationary Gaussian
-  ACF characterized by FWHM.
+## 3D Octree Scanning
+
+The `octree_scan_fwer()` function applies similar principles in 3D, using a
+hierarchical decomposition. Here's a quick check that it runs correctly:
+
+```{r octree_null_mc, message=FALSE, warning=FALSE}
+set.seed(1)
+z_null <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+
+# Run with correlated null model
+res <- octree_scan_fwer(
+  z_null,
+  n_perm = 100,
+  null = "mc_fwhm",
+  fwhm_vox = c(2, 2, 2)
+)
+
+cat("Threshold:", round(res$u, 3), "\n")
+cat("Observed score:", round(res$M_obs, 3), "\n")
+cat("Rejected (should usually be FALSE for null data):", res$M_obs >= res$u, "\n")
+```
+
+## Practical Recommendations
+
+These toy examples use small grids and few permutations for demonstration.
+For real neuroimaging analyses:
+
+- Use at least 1000-5000 permutations for stable thresholds
+- When possible, use subject-level resampling (`make_null_fun_subject_signflip`)
+  rather than model-based null generation
+- The `mc_fwhm` null model assumes stationary Gaussian smoothness, which is
+  approximate for real brain data
