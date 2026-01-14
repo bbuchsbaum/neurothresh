@@ -31,3 +31,4 @@ logs/
 
 # Claude state
 .claude/
+docs

@@ -16,6 +16,10 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r load-package}
+library(neurothresh)
+```
+
 ## Overview
 
 `neurothresh` implements likelihood-ratio matched-filter thresholding (LR-MFT)
@@ -42,7 +46,56 @@ relies on `neuroim2` objects for storage and indexing.
 - Baseline methods: `rft_peak_fwer()`, `rft_cluster_fwer()`, `tfce_fwer()`,
   and `cluster_fdr()`.
 
-## Example Workflow (Pseudo-code)
+## Quick Example: Scoring a Region
+
+Here's a simple example showing how the scoring functions work on synthetic data:
+
+```{r scoring-example}
+# Create a small synthetic Z-score array with a "hot spot"
+set.seed(42)
+n_vox <- 1000
+z_vec <- rnorm(n_vox)
+z_vec[400:450] <- z_vec[400:450] + 2.5  # Add signal in a region
+
+# Uniform prior weights
+pi_vec <- rep(1, n_vox)
+
+# Define region indices (the "hot" region)
+region_idx <- 400:450
+
+# Variance-stabilized score (U0) - good for diffuse signals
+u0_result <- score_set_stabilized(region_idx, z_vec, pi_vec)
+
+# Soft-max score with kappa=1 - balances focal and diffuse
+s1 <- score_set(region_idx, z_vec, pi_vec, kappa = 1)
+
+# Soft-max score with kappa=2 - more sensitive to peaks
+s2 <- score_set(region_idx, z_vec, pi_vec, kappa = 2)
+
+cat("U0 (stabilized):", round(u0_result$U0, 3), "\n")
+cat("Effective n:", round(u0_result$n_eff, 1), "\n")
+cat("S_kappa=1:", round(s1, 3), "\n")
+cat("S_kappa=2:", round(s2, 3), "\n")
+```
+
+## Multiscale Scanning Example
+
+The `octree_scan_fwer()` function performs multiscale scanning over dyadic cubes:
+
+```{r octree-example}
+# Run octree scan with correlated null calibration
+set.seed(123)
+z_test <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+z_test[8:12, 8:12, 8:12] <- z_test[8:12, 8:12, 8:12] + 2  # Add signal
+
+# Provide explicit FWHM (in voxels) for the null model
+result <- octree_scan_fwer(z_test, n_perm = 200, null = "mc_fwhm",
+                            fwhm_vox = c(2, 2, 2))
+cat("Global U0 threshold (alpha=0.05):", round(result$u, 3), "\n")
+cat("Observed max U0:", round(result$M_obs, 3), "\n")
+```
+
+## Example Workflow with neuroim2 (Pseudo-code)
 
 ```{r example, eval=FALSE}
 # library(neuroim2)
@@ -142,5 +195,5 @@ methods.
 - The alpha-spending mode is more permissive but still controls FWER under
   the hierarchical nesting assumption.
 
-For full algorithmic details, see the discussion documents in
-`docs/discussion/`.
+For full algorithmic details, see the package documentation and the
+GitHub repository.
