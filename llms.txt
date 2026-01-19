@@ -1,0 +1,87 @@
+Statistical thresholding for neuroimaging data using Likelihood-Ratio
+Matched-Filter Thresholding (LR-MFT) with hierarchical stepdown
+inference. Provides theoretically superior alternative to traditional
+GRF/RFT methods for detecting spatially extended activations. Includes
+baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
+
+# Package index
+
+## All functions
+
+- [`bbox_from_indices()`](https://bbuchsbaum.github.io/neurothresh/reference/bbox_from_indices.md)
+  : Compute bounding box from mask-space indices
+- [`canonicalize_stat()`](https://bbuchsbaum.github.io/neurothresh/reference/canonicalize_stat.md)
+  : Canonicalize statistical maps to Z-scores
+- [`cluster-fdr`](https://bbuchsbaum.github.io/neurothresh/reference/cluster-fdr.md)
+  : Cluster-Level FDR Control
+- [`cluster_fdr()`](https://bbuchsbaum.github.io/neurothresh/reference/cluster_fdr.md)
+  : Cluster-FDR with RFT or Permutation P-values
+- [`estimate_fwhm_vox()`](https://bbuchsbaum.github.io/neurothresh/reference/estimate_fwhm_vox.md)
+  : Estimate Gaussian ACF FWHM from a single map (map-only)
+- [`generate_null_scores()`](https://bbuchsbaum.github.io/neurothresh/reference/generate_null_scores.md)
+  : Generate null distribution via sign-flipping
+- [`generate_null_scores_parcels()`](https://bbuchsbaum.github.io/neurothresh/reference/generate_null_scores_parcels.md)
+  : Generate null scores for parcel-level analysis
+- [`hier_scan()`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)
+  : Hierarchical LR-MFT Analysis
+- [`hierarchical`](https://bbuchsbaum.github.io/neurothresh/reference/hierarchical.md)
+  : Hierarchical Testing with Alpha-Spending
+- [`make_null_fun_subject_signflip()`](https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_subject_signflip.md)
+  : Subject-level sign-flip null generator (one-sample)
+- [`make_perm_fun()`](https://bbuchsbaum.github.io/neurothresh/reference/make_perm_fun.md)
+  : Create permutation function for hierarchical analysis
+- [`maxT_singlestep()`](https://bbuchsbaum.github.io/neurothresh/reference/maxT_singlestep.md)
+  : Single-step MaxT Procedure
+- [`octree-wrappers`](https://bbuchsbaum.github.io/neurothresh/reference/octree-wrappers.md)
+  : R wrappers for octree operations
+- [`octree_scan_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
+  : Octree Max-Scan with permutation FWER (U0-only)
+- [`octree_scan_stepdown()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md)
+  : Octree scan with hierarchical step-down inference (U0-only)
+- [`octree_split()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_split.md)
+  : Recursive octree split
+- [`octree_split_info()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_split_info.md)
+  : Build octree split info for a parent node
+- [`print(`*`<neurothresh_result>`*`)`](https://bbuchsbaum.github.io/neurothresh/reference/print.neurothresh_result.md)
+  : Print method for neurothresh_result
+- [`rft-methods`](https://bbuchsbaum.github.io/neurothresh/reference/rft-methods.md)
+  : Random Field Theory (RFT) Thresholding Methods
+- [`rft_cluster_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/rft_cluster_fwer.md)
+  : RFT Cluster-Level FWER
+- [`rft_fwer_twosided()`](https://bbuchsbaum.github.io/neurothresh/reference/rft_fwer_twosided.md)
+  : Two-sided RFT wrapper
+- [`rft_peak_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/rft_peak_fwer.md)
+  : RFT Peak-Level FWER
+- [`score_children_onepass()`](https://bbuchsbaum.github.io/neurothresh/reference/score_children_onepass.md)
+  : Score all children in one pass through parent voxels
+- [`score_set()`](https://bbuchsbaum.github.io/neurothresh/reference/score_set.md)
+  : Compute prior-weighted soft evidence statistic T_kappa(R)
+- [`score_set_omnibus()`](https://bbuchsbaum.github.io/neurothresh/reference/score_set_omnibus.md)
+  : Compute omnibus score combining diffuse and focal detection
+- [`score_set_stabilized()`](https://bbuchsbaum.github.io/neurothresh/reference/score_set_stabilized.md)
+  : Compute variance-stabilized score U_0(R)
+- [`split_child_indices()`](https://bbuchsbaum.github.io/neurothresh/reference/split_child_indices.md)
+  : Split parent indices into child index lists
+- [`split_indices_bbox()`](https://bbuchsbaum.github.io/neurothresh/reference/split_indices_bbox.md)
+  : Split indices with bounding boxes
+- [`split_indices_bbox_mass()`](https://bbuchsbaum.github.io/neurothresh/reference/split_indices_bbox_mass.md)
+  : Split indices with bounding boxes and prior masses
+- [`summary(`*`<neurothresh_result>`*`)`](https://bbuchsbaum.github.io/neurothresh/reference/summary.neurothresh_result.md)
+  : Summary method for neurothresh_result
+- [`tfce-methods`](https://bbuchsbaum.github.io/neurothresh/reference/tfce-methods.md)
+  : Threshold-Free Cluster Enhancement (TFCE)
+- [`tfce_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md)
+  : TFCE with Permutation FWER
+- [`tfce_transform()`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_transform.md)
+  : TFCE Transform
+- [`wy_stepdown()`](https://bbuchsbaum.github.io/neurothresh/reference/wy_stepdown.md)
+  : Westfall-Young Step-Down Procedure
+
+# Articles
+
+### All vignettes
+
+- [Introduction to
+  neurothresh](https://bbuchsbaum.github.io/neurothresh/articles/neurothresh-intro.md):
+- [Simulation Validation: FWER and
+  Power](https://bbuchsbaum.github.io/neurothresh/articles/simulation-validation.md):

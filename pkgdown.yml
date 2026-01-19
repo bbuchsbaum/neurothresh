@@ -1,0 +1,10 @@
+pandoc: 3.1.11
+pkgdown: 2.2.0
+pkgdown_sha: ~
+articles:
+  neurothresh-intro: neurothresh-intro.html
+  simulation-validation: simulation-validation.html
+last_built: 2026-01-19T15:02Z
+urls:
+  reference: https://bbuchsbaum.github.io/neurothresh/reference
+  article: https://bbuchsbaum.github.io/neurothresh/articles

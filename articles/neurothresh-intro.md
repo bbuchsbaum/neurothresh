@@ -1,0 +1,204 @@
+# Introduction to neurothresh
+
+``` r
+library(neurothresh)
+```
+
+## What is neurothresh?
+
+When analyzing neuroimaging data, we often face a fundamental challenge:
+how do we decide which brain regions show real activation versus noise?
+Traditional approaches like Random Field Theory (RFT) control false
+positives well, but they can be overly conservative for the spatially
+extended activations common in task fMRI.
+
+`neurothresh` implements **Likelihood-Ratio Matched-Filter Thresholding
+(LR-MFT)**, a method designed to be more sensitive to distributed brain
+activations while still maintaining rigorous error control. The key
+insight is that instead of asking “is this single voxel significant?”,
+we ask “is there evidence of activation across this region?”
+
+## The Core Idea: Aggregating Evidence
+
+The package provides two complementary ways to score a brain region:
+
+1.  **Soft-max score** (`score_set`): Uses a temperature parameter κ
+    (kappa) to balance between detecting focal peaks (high κ) and
+    diffuse activation (low κ).
+
+2.  **Variance-stabilized score** (`score_set_stabilized`): Normalizes
+    by region size so that small and large regions can be fairly
+    compared.
+
+Let’s see how these work with a simple example:
+
+``` r
+# Simulate 1000 voxels with a "hot" region (voxels 400-450)
+set.seed(42)
+n_vox <- 1000
+z_vec <- rnorm(n_vox)
+z_vec[400:450] <- z_vec[400:450] + 2.5  # Add signal
+
+# Use uniform prior weights (all voxels contribute equally)
+pi_vec <- rep(1, n_vox)
+
+# Score just the activated region
+region_idx <- 400:450
+
+# The stabilized score accounts for region size
+u0_result <- score_set_stabilized(region_idx, z_vec, pi_vec)
+
+# Soft-max scores with different kappa values
+s1 <- score_set(region_idx, z_vec, pi_vec, kappa = 1)
+s2 <- score_set(region_idx, z_vec, pi_vec, kappa = 2)
+
+cat("U0 (stabilized):", round(u0_result$U0, 3), "\n")
+#> U0 (stabilized): 17.148
+cat("Effective sample size:", round(u0_result$n_eff, 1), "\n")
+#> Effective sample size: 51
+cat("Soft-max (kappa=1):", round(s1, 3), "\n")
+#> Soft-max (kappa=1): 6.8
+cat("Soft-max (kappa=2):", round(s2, 3), "\n")
+#> Soft-max (kappa=2): 10.398
+```
+
+The higher κ values make the score more sensitive to the strongest
+peaks, while the stabilized U0 score gives fair weight to all voxels in
+the region.
+
+## Multiscale Scanning
+
+One powerful feature of `neurothresh` is **multiscale scanning**:
+testing for activation at multiple spatial scales simultaneously. The
+[`octree_scan_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
+function divides the brain into hierarchical cubes and tests each one,
+controlling the family-wise error rate (FWER) across all tests.
+
+``` r
+# Create a 3D volume with an embedded signal
+set.seed(123)
+z_test <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
+z_test[8:12, 8:12, 8:12] <- z_test[8:12, 8:12, 8:12] + 2
+
+# Run the multiscale scan
+# fwhm_vox specifies the smoothness of the data (in voxels)
+result <- octree_scan_fwer(z_test, n_perm = 200, null = "mc_fwhm",
+                            fwhm_vox = c(2, 2, 2))
+
+cat("Threshold for significance:", round(result$u, 3), "\n")
+#> Threshold for significance: 7.802
+cat("Observed maximum score:", round(result$M_obs, 3), "\n")
+#> Observed maximum score: 15.8
+cat("Significant?", result$M_obs >= result$u, "\n")
+#> Significant? TRUE
+```
+
+## Working with Real Neuroimaging Data
+
+In practice, you’ll work with NIfTI files loaded via `neuroim2`. Here’s
+the typical workflow:
+
+``` r
+library(neuroim2)
+library(neurothresh)
+
+# Load your statistical map (already in Z-scores, or use canonicalize_stat())
+z_map <- read_vol("zstat1.nii.gz")
+
+# Optional: provide prior weights (e.g., from a meta-analysis or atlas)
+prior_map <- read_vol("prior.nii.gz")
+
+# Run hierarchical LR-MFT analysis
+result <- hier_scan(
+  z_map,
+  prior_vol = prior_map,
+  alpha = 0.05,
+  kappa = c(0.5, 1.0, 2.0),  # Test multiple scales
+  n_perm = 1000,
+  method = "stepdown"
+)
+
+summary(result)
+```
+
+## Converting Different Statistic Types
+
+Not all software outputs Z-scores. Use
+[`canonicalize_stat()`](https://bbuchsbaum.github.io/neurothresh/reference/canonicalize_stat.md)
+to convert from t-statistics or p-values:
+
+``` r
+# From t-statistics (need to specify degrees of freedom)
+z_from_t <- canonicalize_stat(t_map, stat_type = "t", df = 25)
+
+# From -log10(p) values (common in GWAS-style analyses)
+z_from_p <- canonicalize_stat(neglog10p_map, stat_type = "neglog10p")
+```
+
+## Choosing a Null Model
+
+A critical choice is how to generate null distributions for permutation
+testing. The safest approach depends on your data:
+
+**If you have subject-level maps** (recommended): Use sign-flipping at
+the subject level. This preserves the spatial correlation structure.
+
+``` r
+# subject_maps is a list of 3D arrays, one per subject
+null_gen <- make_null_fun_subject_signflip(subject_maps, seed = 1)
+
+result <- octree_scan_fwer(
+  null_gen$z_vol,
+  mask = null_gen$mask,
+  n_perm = 5000,
+  null_fun = null_gen$null_fun
+)
+```
+
+**If you only have a group map**: Use model-based null generation with
+estimated smoothness:
+
+``` r
+# Estimate smoothness from the map and generate correlated null fields
+result <- octree_scan_fwer(z_map, n_perm = 2000, null = "mc_fwhm")
+```
+
+## Comparison with Traditional Methods
+
+`neurothresh` includes implementations of standard neuroimaging
+thresholding methods, useful for benchmarking:
+
+``` r
+# Random Field Theory peak-level correction
+rft <- rft_peak_fwer(z_map, fwhm_mm = 8)
+
+# Threshold-Free Cluster Enhancement
+tfce <- tfce_fwer(z_map, n_perm = 5000)
+
+# Cluster-level FDR
+fdr <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05)
+```
+
+## Key Functions Reference
+
+| Function                                                                                               | Purpose                                            |
+|--------------------------------------------------------------------------------------------------------|----------------------------------------------------|
+| [`hier_scan()`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)                       | Main entry point for LR-MFT analysis               |
+| [`octree_scan_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)         | Multiscale scanning with FWER control              |
+| [`octree_scan_stepdown()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md) | Multiscale scanning with hierarchical stepdown     |
+| [`score_set()`](https://bbuchsbaum.github.io/neurothresh/reference/score_set.md)                       | Compute soft-max score for a region                |
+| [`score_set_stabilized()`](https://bbuchsbaum.github.io/neurothresh/reference/score_set_stabilized.md) | Variance-stabilized score for fair size comparison |
+| [`canonicalize_stat()`](https://bbuchsbaum.github.io/neurothresh/reference/canonicalize_stat.md)       | Convert t or p-values to Z-scores                  |
+| [`estimate_fwhm_vox()`](https://bbuchsbaum.github.io/neurothresh/reference/estimate_fwhm_vox.md)       | Estimate smoothness from a statistical map         |
+
+## When to Use LR-MFT
+
+LR-MFT is particularly well-suited when you expect:
+
+- **Spatially extended activations** spanning multiple voxels
+- **Multiple activation foci** rather than a single peak
+- **Prior information** about where activations might occur
+
+For very focal, single-peak activations, traditional RFT peak-level
+inference may perform comparably. The `simulation-validation` vignette
+demonstrates power comparisons.
