@@ -34,5 +34,5 @@ Remotes:
     bbuchsbaum/neuroatlas
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://github.com/bbuchsbaum/neurothresh
+URL: https://github.com/bbuchsbaum/neurothresh, https://bbuchsbaum.github.io/neurothresh/
 BugReports: https://github.com/bbuchsbaum/neurothresh/issues

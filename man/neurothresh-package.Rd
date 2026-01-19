@@ -46,6 +46,7 @@ where \eqn{\pi(v)} is the prior weight and \eqn{\kappa} is the temperature.
 Useful links:
 \itemize{
   \item \url{https://github.com/bbuchsbaum/neurothresh}
+  \item \url{https://bbuchsbaum.github.io/neurothresh/}
   \item Report bugs at \url{https://github.com/bbuchsbaum/neurothresh/issues}
 }
 

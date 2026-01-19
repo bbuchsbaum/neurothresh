@@ -197,4 +197,5 @@ For real neuroimaging analyses:
 - When possible, use subject-level resampling (`make_null_fun_subject_signflip`)
   rather than model-based null generation
 - The `mc_fwhm` null model assumes stationary Gaussian smoothness, which is
-  approximate for real brain data
+  approximate for real brain data; if you have long-tailed ACF parameters from
+  upstream tools, consider `null = "mc_acf"` with `acf_params`

@@ -3,6 +3,8 @@
 ^LICENSE\.md$
 ^README\.Rmd$
 ^\.github$
+^\.git$
+^\.gitignore$
 ^docs$
 ^tasks$
 ^specs$
@@ -28,3 +30,5 @@
 ^\.response_analysis$
 ^doc$
 ^Meta$
+^_pkgdown\.yml$
+^pkgdown$

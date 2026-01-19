@@ -93,8 +93,7 @@ z_test[8:12, 8:12, 8:12] <- z_test[8:12, 8:12, 8:12] + 2
 result <- octree_scan_fwer(z_test, n_perm = 200, null = "mc_fwhm",
                             fwhm_vox = c(2, 2, 2))
 
-cat("Threshold for significance:", round(result$u, 3), "\n
-")
+cat("Threshold for significance:", round(result$u, 3), "\n")
 cat("Observed maximum score:", round(result$M_obs, 3), "\n")
 cat("Significant?", result$M_obs >= result$u, "\n")
 ```

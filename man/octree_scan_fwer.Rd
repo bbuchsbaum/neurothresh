@@ -106,16 +106,16 @@ For hierarchical step-down over sibling families during descent, see
 }
 \examples{
 # Map-only (model-based) calibration using a Gaussian ACF null:
-z <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
-res <- octree_scan_fwer(z, n_perm = 200, null = "mc_fwhm")
+z <- array(rnorm(16 * 16 * 16), dim = c(16, 16, 16))
+res <- octree_scan_fwer(z, n_perm = 50, null = "mc_fwhm", fwhm_vox = c(2, 2, 2))
 
 # User-supplied mixed ACF parameters (Gaussian + long tail):
 acf <- list(a = 0.7, fwhm_vox = c(4, 4, 4), lambda_vox = c(2, 2, 2))
-res2 <- octree_scan_fwer(z, n_perm = 200, null = "mc_acf", acf_params = acf)
+res2 <- octree_scan_fwer(z, n_perm = 50, null = "mc_acf", acf_params = acf)
 
 # Subject-level sign-flips (recommended when subject maps are available):
-subj <- replicate(8, array(rnorm(20 * 20 * 20), dim = c(20, 20, 20)), simplify = FALSE)
+subj <- replicate(8, array(rnorm(16 * 16 * 16), dim = c(16, 16, 16)), simplify = FALSE)
 sf <- make_null_fun_subject_signflip(subj)
-res3 <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 200, null_fun = sf$null_fun)
+res3 <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 50, null_fun = sf$null_fun)
 
 }
