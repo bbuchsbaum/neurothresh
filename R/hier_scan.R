@@ -27,6 +27,10 @@
 #' @param two_sided Logical, whether to perform two-sided inference
 #' @param prior_eta Mixing weight for prior smoothing with uniform mass.
 #'   Values in \[0, 1\], where 0 is uniform and 1 is the raw prior.
+#' @param parallel Logical, whether to parallelize permutation loops using
+#'   future.apply (optional).
+#' @param n_workers Optional integer number of workers for future plan.
+#'   Ignored unless \code{parallel = TRUE} and the future package is installed.
 #'
 #' @return An S3 object of class "neurothresh_result" containing:
 #'   \describe{
@@ -82,11 +86,33 @@ hier_scan <- function(z_vol,
                       stat_type = "Z",
                       df = NULL,
                       two_sided = FALSE,
-                      prior_eta = 0.9) {
+                      prior_eta = 0.9,
+                      parallel = FALSE,
+                      n_workers = NULL) {
 
   method <- match.arg(method)
 
   if (!is.null(seed)) set.seed(seed)
+
+  parallel <- isTRUE(parallel)
+  use_future <- FALSE
+  if (parallel) {
+    if (requireNamespace("future.apply", quietly = TRUE)) {
+      use_future <- TRUE
+    } else {
+      warning("parallel=TRUE requested but future.apply is not installed; running serial.")
+    }
+  }
+  if (use_future) {
+    if (requireNamespace("future", quietly = TRUE)) {
+      old_plan <- future::plan()
+      on.exit(future::plan(old_plan), add = TRUE)
+      workers <- if (is.null(n_workers)) future::availableCores() else n_workers
+      future::plan(future::multisession, workers = workers)
+    } else if (!is.null(n_workers)) {
+      warning("n_workers ignored because future is not installed.")
+    }
+  }
 
   # --- (A) Canonicalize input ---
   if (stat_type != "Z") {
@@ -150,7 +176,8 @@ hier_scan <- function(z_vol,
       parcel_results <- test_parcels(
         z_vec[valid_labels], pi_vec[valid_labels], lab_vec[valid_labels],
         n_perm = n_perm, kappa_grid = kappa,
-        alpha = gamma_root * alpha, seed = seed
+        alpha = gamma_root * alpha, seed = seed,
+        parallel = use_future
       )
 
       # Descend into significant parcels
@@ -175,7 +202,8 @@ hier_scan <- function(z_vol,
               alpha_budget = alpha_desc * w[k],
               z_vec, pi_vec, x, y, z_coord,
               perm_fun, n_perm, kappa,
-              gamma, min_alpha, min_voxels
+              gamma, min_alpha, min_voxels,
+              parallel = use_future
             )
 
             significant_regions <- c(significant_regions, hits)
@@ -202,7 +230,8 @@ hier_scan <- function(z_vol,
           alpha_budget = alpha * parcel_mass[k],
           z_vec, pi_vec, x, y, z_coord,
           perm_fun, n_perm, kappa,
-          gamma = gamma_use, min_alpha, min_voxels
+          gamma = gamma_use, min_alpha, min_voxels,
+          parallel = use_future
         )
 
         significant_regions <- c(significant_regions, hits)
@@ -219,7 +248,8 @@ hier_scan <- function(z_vol,
         alpha_budget = alpha,
         z_vec, pi_vec, x, y, z_coord,
         perm_fun, n_perm, kappa,
-        gamma, min_alpha, min_voxels
+        gamma, min_alpha, min_voxels,
+        parallel = use_future
       )
     } else {
       significant_regions <- hier_descend_alpha(
@@ -227,7 +257,8 @@ hier_scan <- function(z_vol,
         alpha_budget = alpha,
         z_vec, pi_vec, x, y, z_coord,
         perm_fun, n_perm, kappa,
-        gamma = gamma_root, min_alpha, min_voxels
+        gamma = gamma_root, min_alpha, min_voxels,
+        parallel = use_future
       )
     }
   }
@@ -250,7 +281,9 @@ hier_scan <- function(z_vol,
       gamma = gamma,
       gamma_root = gamma_root,
       min_voxels = min_voxels,
-      two_sided = two_sided
+      two_sided = two_sided,
+      parallel = parallel,
+      n_workers = n_workers
     ),
     mask_idx = mask_idx,
     dims = dims

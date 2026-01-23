@@ -31,7 +31,8 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
                          z_vec, pi_vec, x, y, z,
                          perm_fun, n_perm, kappa_grid,
                          gamma = 0.5, min_alpha = 1e-6,
-                         min_voxels = 8) {
+                         min_voxels = 8,
+                         parallel = FALSE) {
 
   hits <- list()
 
@@ -59,13 +60,24 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
   )
 
   # Null child scores
-  t_null <- matrix(NA_real_, nrow = n_perm, ncol = split$m)
-  for (b in seq_len(n_perm)) {
-    z_perm <- perm_fun(b)
-    t_null[b, ] <- score_children_onepass_cpp(
-      z_perm, idx_parent, split$w_parent, split$child_id,
-      split$log_den1, split$inv_sqrt_den2, kappa_pos, do_abs = FALSE
-    )
+  if (parallel) {
+    t_null_list <- future.apply::future_lapply(seq_len(n_perm), function(b) {
+      z_perm <- perm_fun(b)
+      score_children_onepass_cpp(
+        z_perm, idx_parent, split$w_parent, split$child_id,
+        split$log_den1, split$inv_sqrt_den2, kappa_pos, do_abs = FALSE
+      )
+    }, future.seed = TRUE)
+    t_null <- do.call(rbind, t_null_list)
+  } else {
+    t_null <- matrix(NA_real_, nrow = n_perm, ncol = split$m)
+    for (b in seq_len(n_perm)) {
+      z_perm <- perm_fun(b)
+      t_null[b, ] <- score_children_onepass_cpp(
+        z_perm, idx_parent, split$w_parent, split$child_id,
+        split$log_den1, split$inv_sqrt_den2, kappa_pos, do_abs = FALSE
+      )
+    }
   }
 
   # Westfall-Young step-down
@@ -107,7 +119,8 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
         alpha_budget = alpha_desc * w[k],
         z_vec, pi_vec, x, y, z,
         perm_fun, n_perm, kappa_grid,
-        gamma, min_alpha, min_voxels
+        gamma, min_alpha, min_voxels,
+        parallel = parallel
       )
       hits <- c(hits, child_hits)
     }
@@ -141,7 +154,8 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
                                z_vec, pi_vec, x, y, z,
                                perm_fun, n_perm, kappa_grid,
                                gamma = 0.5, min_alpha = 1e-6,
-                               min_voxels = 8) {
+                               min_voxels = 8,
+                               parallel = FALSE) {
 
   hits <- list()
 
@@ -153,10 +167,18 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
   s_obs <- obs$T_omnibus
 
   ge <- 0
-  for (b in seq_len(n_perm)) {
-    z_perm <- perm_fun(b)
-    s_perm <- score_set_omnibus(idx_parent, z_perm, pi_vec, kappa_grid)$T_omnibus
-    if (s_perm >= s_obs) ge <- ge + 1
+  if (parallel) {
+    perm_scores <- future.apply::future_lapply(seq_len(n_perm), function(b) {
+      z_perm <- perm_fun(b)
+      score_set_omnibus(idx_parent, z_perm, pi_vec, kappa_grid)$T_omnibus
+    }, future.seed = TRUE)
+    ge <- sum(unlist(perm_scores) >= s_obs)
+  } else {
+    for (b in seq_len(n_perm)) {
+      z_perm <- perm_fun(b)
+      s_perm <- score_set_omnibus(idx_parent, z_perm, pi_vec, kappa_grid)$T_omnibus
+      if (s_perm >= s_obs) ge <- ge + 1
+    }
   }
 
   p_val <- (ge + 1) / (n_perm + 1)
@@ -196,7 +218,8 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
       alpha_budget = alpha_desc * child_mass[k],
       z_vec, pi_vec, x, y, z,
       perm_fun, n_perm, kappa_grid,
-      gamma, min_alpha, min_voxels
+      gamma, min_alpha, min_voxels,
+      parallel = parallel
     )
     hits <- c(hits, child_hits)
   }
@@ -226,9 +249,8 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
 #'
 #' @keywords internal
 test_parcels <- function(z_vec, pi_vec, lab_vec, n_perm, kappa_grid,
-                         alpha = 0.05, seed = NULL) {
-
-  if (!is.null(seed)) set.seed(seed)
+                         alpha = 0.05, seed = NULL,
+                         parallel = FALSE) {
 
   # Precompute parcel constants
   pi2_vec <- pi_vec * pi_vec
@@ -245,14 +267,23 @@ test_parcels <- function(z_vec, pi_vec, lab_vec, n_perm, kappa_grid,
                               log_den1, inv_sqrt_den2, kappa_grid)
 
   # Null parcel scores
-  t_null <- matrix(NA_real_, nrow = n_perm, ncol = n_parcels)
-  n_voxels <- length(z_vec)
+  if (!is.null(seed)) set.seed(seed)
+  perm_fun <- make_perm_fun(z_vec, n_perm, seed = NULL)
 
-  for (b in seq_len(n_perm)) {
-    signs <- sample(c(-1, 1), n_voxels, replace = TRUE)
-    z_perm <- signs * z_vec
-    t_null[b, ] <- .score_parcels_vec(z_perm, pi_vec, lab_vec,
-                                      log_den1, inv_sqrt_den2, kappa_grid)
+  if (parallel) {
+    t_null_list <- future.apply::future_lapply(seq_len(n_perm), function(b) {
+      z_perm <- perm_fun(b)
+      .score_parcels_vec(z_perm, pi_vec, lab_vec,
+                         log_den1, inv_sqrt_den2, kappa_grid)
+    }, future.seed = TRUE)
+    t_null <- do.call(rbind, t_null_list)
+  } else {
+    t_null <- matrix(NA_real_, nrow = n_perm, ncol = n_parcels)
+    for (b in seq_len(n_perm)) {
+      z_perm <- perm_fun(b)
+      t_null[b, ] <- .score_parcels_vec(z_perm, pi_vec, lab_vec,
+                                        log_den1, inv_sqrt_den2, kappa_grid)
+    }
   }
 
   # Step-down

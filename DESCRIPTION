@@ -26,7 +26,9 @@ Suggests:
     neuroatlas (>= 0.1.0),
     testthat (>= 3.0.0),
     knitr,
-    rmarkdown
+    rmarkdown,
+    future,
+    future.apply
 LinkingTo:
     Rcpp
 Remotes:
