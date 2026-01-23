@@ -23,7 +23,9 @@ hier_scan(
   stat_type = "Z",
   df = NULL,
   two_sided = FALSE,
-  prior_eta = 0.9
+  prior_eta = 0.9,
+  parallel = FALSE,
+  n_workers = NULL
 )
 ```
 
@@ -102,6 +104,16 @@ hier_scan(
 
   Mixing weight for prior smoothing with uniform mass. Values in \[0,
   1\], where 0 is uniform and 1 is the raw prior.
+
+- parallel:
+
+  Logical, whether to parallelize permutation loops using future.apply
+  (optional).
+
+- n_workers:
+
+  Optional integer number of workers for future plan. Ignored unless
+  `parallel = TRUE` and the future package is installed.
 
 ## Value
 
