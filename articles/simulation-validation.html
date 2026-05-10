@@ -29,14 +29,17 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="../articles/neurothresh.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/neurothresh-intro.html">Introduction to neurothresh</a></li>
+<li><a class="dropdown-item" href="../articles/lisa-local-adaptive-inference.html">Local Adaptive Inference with LISA</a></li>
+    <li><a class="dropdown-item" href="../articles/scale-space-localized-energy.html">Scale-Space Localized Energy Inference</a></li>
     <li><a class="dropdown-item" href="../articles/simulation-validation.html">Simulation Validation: FWER and Power</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -78,9 +81,10 @@ false positive.</p></li>
 <li><p><strong>Detect real signals</strong>: When there is a real
 signal, we want high statistical power to find it.</p></li>
 </ol>
-<p>This vignette runs small simulations to verify that
-<code>neurothresh</code> achieves both goals. We use small grids and few
-permutations for speed; real analyses should use larger values.</p>
+<p>This vignette runs small simulations that illustrate both goals. The
+examples are deliberately small so they can run during package checks;
+use larger grids, more simulation replicates, and more permutations for
+a real calibration study.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/bbuchsbaum/neurothresh" class="external-link">neurothresh</a></span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -121,8 +125,15 @@ example with the soft-max score.</p>
 <span><span class="co">#&gt; Estimated FWER: 0.045</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Expected (alpha = 0.05):"</span>, <span class="fl">0.05</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Expected (alpha = 0.05): 0.05</span></span></code></pre></div>
-<p>The estimated FWER should be close to 0.05. Some variation is
-expected due to Monte Carlo noise.</p>
+<p>The estimated FWER should be in the neighborhood of 0.05. Some
+variation is expected because this vignette uses only 200 fresh null
+samples.</p>
+<div class="figure">
+<img src="simulation-validation_files/figure-html/fwer-plot-1.png" class="r-plt" alt="The null distribution defines the decision threshold. Fresh null simulations crossing the red line become false positives." width="576"><p class="caption">
+The null distribution defines the decision threshold. Fresh null
+simulations crossing the red line become false positives.
+</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="power-comparison-soft-max-vs-peak-maximum">Power Comparison: Soft-max vs Peak Maximum<a class="anchor" aria-label="anchor" href="#power-comparison-soft-max-vs-peak-maximum"></a>
@@ -137,12 +148,15 @@ entire field</li>
 <strong>Peak maximum</strong>: Only looks at the single highest
 voxel</li>
 </ol>
-<p>When the signal is spread across multiple voxels (a “blob”), the
-soft-max should have higher power because it accumulates evidence.</p>
+<p>When the signal is broad and low-amplitude, the soft-max and peak
+maximum can behave differently because one accumulates weak evidence and
+the other responds to the single largest value.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fl">200</span></span>
-<span><span class="va">amp</span> <span class="op">&lt;-</span> <span class="fl">1.5</span>                    <span class="co"># Signal amplitude</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">789</span><span class="op">)</span></span>
+<span><span class="va">B</span> <span class="op">&lt;-</span> <span class="fl">200</span></span>
+<span><span class="va">amp</span> <span class="op">&lt;-</span> <span class="fl">0.5</span>                    <span class="co"># Low signal amplitude</span></span>
 <span><span class="va">center</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">15</span>, <span class="fl">15</span><span class="op">)</span>           <span class="co"># Center of the blob</span></span>
+<span><span class="va">blob_radius</span> <span class="op">&lt;-</span> <span class="fl">6</span>              <span class="co"># Broad spatial extent</span></span>
 <span></span>
 <span><span class="co"># We already have the soft-max threshold from above</span></span>
 <span><span class="va">thr_soft</span> <span class="op">&lt;-</span> <span class="va">threshold</span></span>
@@ -160,7 +174,7 @@ soft-max should have higher power because it accumulates evidence.</p>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">b</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">B</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="co"># Generate noise + blob signal</span></span>
 <span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="fu">smooth_field</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span> <span class="op">*</span> <span class="va">n</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="va">n</span><span class="op">)</span>, <span class="va">kernel</span><span class="op">)</span></span>
-<span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="fu">insert_blob</span><span class="op">(</span><span class="va">z</span>, <span class="va">center</span>, radius <span class="op">=</span> <span class="fl">2</span>, amp <span class="op">=</span> <span class="va">amp</span><span class="op">)</span></span>
+<span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="fu">insert_blob</span><span class="op">(</span><span class="va">z</span>, <span class="va">center</span>, radius <span class="op">=</span> <span class="va">blob_radius</span>, amp <span class="op">=</span> <span class="va">amp</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Test both methods</span></span>
 <span>  <span class="va">power_soft</span> <span class="op">&lt;-</span> <span class="va">power_soft</span> <span class="op">+</span> <span class="op">(</span><span class="fu">softmax_score</span><span class="op">(</span><span class="va">z</span>, kappa <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="va">thr_soft</span><span class="op">)</span></span>
@@ -174,8 +188,17 @@ soft-max should have higher power because it accumulates evidence.</p>
 <span><span class="co">#&gt;   Soft-max: NA</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"  Peak max:"</span>, <span class="va">results</span><span class="op">[</span><span class="st">"peak_max"</span><span class="op">]</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   Peak max: NA</span></span></code></pre></div>
-<p>The soft-max typically shows higher power for this blob-shaped signal
-because it pools evidence across the activated region.</p>
+<p>The printed values show the estimated detection rate for this
+particular seeded toy setup. Change <code>amp</code> and
+<code>blob_radius</code> to see when aggregation helps more than peak
+detection.</p>
+<div class="figure">
+<img src="simulation-validation_files/figure-html/power-plot-1.png" class="r-plt" alt="Estimated detection rate for a broad low-amplitude signal. This gives a visual check on whether region-level aggregation or peak detection is favored under the chosen signal shape." width="576"><p class="caption">
+Estimated detection rate for a broad low-amplitude signal. This gives a
+visual check on whether region-level aggregation or peak detection is
+favored under the chosen signal shape.
+</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="d-octree-scanning">3D Octree Scanning<a class="anchor" aria-label="anchor" href="#d-octree-scanning"></a>
@@ -187,20 +210,16 @@ check that it runs correctly:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">z_null</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">20</span> <span class="op">*</span> <span class="fl">20</span> <span class="op">*</span> <span class="fl">20</span><span class="op">)</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">20</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Run with correlated null model</span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/octree_scan_fwer.html">octree_scan_fwer</a></span><span class="op">(</span></span>
-<span>  <span class="va">z_null</span>,</span>
-<span>  n_perm <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>  null <span class="op">=</span> <span class="st">"mc_fwhm"</span>,</span>
-<span>  fwhm_vox <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="co"># Build a Monte-Carlo Gaussian null with the smoothness you want to assume</span></span>
+<span><span class="va">ns</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/null_mc_fwhm.html">null_mc_fwhm</a></span><span class="op">(</span>template <span class="op">=</span> <span class="va">z_null</span>, mask <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.finite</a></span><span class="op">(</span><span class="va">z_null</span><span class="op">)</span>,</span>
+<span>                   smoothness <span class="op">=</span> <span class="fu"><a href="../reference/smoothness_fwhm.html">smoothness_fwhm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                   n_perm <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/octree_scan_fwer.html">octree_scan_fwer</a></span><span class="op">(</span><span class="va">z_null</span>, null_spec <span class="op">=</span> <span class="va">ns</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Threshold:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">u</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Threshold: 7.836</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Observed score:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">M_obs</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Observed score: 3.81</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Rejected (should usually be FALSE for null data):"</span>, <span class="va">res</span><span class="op">$</span><span class="va">M_obs</span> <span class="op">&gt;=</span> <span class="va">res</span><span class="op">$</span><span class="va">u</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Rejected (should usually be FALSE for null data): FALSE</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Threshold:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">threshold</span>, <span class="fl">3</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Threshold: 7.898</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Rejected voxels:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">res</span><span class="op">$</span><span class="va">reject</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Rejected voxels: 0</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="practical-recommendations">Practical Recommendations<a class="anchor" aria-label="anchor" href="#practical-recommendations"></a>
@@ -210,14 +229,43 @@ demonstration. For real neuroimaging analyses:</p>
 <ul>
 <li>Use at least 1000-5000 permutations for stable thresholds</li>
 <li>When possible, use subject-level resampling
-(<code>make_null_fun_subject_signflip</code>) rather than model-based
-null generation</li>
-<li>The <code>mc_fwhm</code> null model assumes stationary Gaussian
+(<code><a href="../reference/null_one_sample.html">null_one_sample()</a></code> / <code><a href="../reference/null_subject_signflip.html">null_subject_signflip()</a></code>)
+rather than model-based null generation</li>
+<li>The <code>null_mc_fwhm</code> null model assumes stationary Gaussian
 smoothness, which is approximate for real brain data; if you have
 long-tailed ACF parameters from upstream tools, consider
-<code>null = "mc_acf"</code> with <code>acf_params</code>
-</li>
+<code>null_mc_acf(smoothness_acf(...))</code> instead</li>
 </ul>
+</div>
+<div class="section level2">
+<h2 id="resampling-choice-for-tfce-and-cluster-fdr">Resampling Choice for TFCE and Cluster-FDR<a class="anchor" aria-label="anchor" href="#resampling-choice-for-tfce-and-cluster-fdr"></a>
+</h2>
+<p>For TFCE and permutation cluster-FDR, the choice of resampling model
+can substantially affect false-positive behavior. The helper
+<code><a href="../reference/run_resampling_fwer_study.html">run_resampling_fwer_study()</a></code> compares:</p>
+<ul>
+<li>default voxelwise sign-flips, and</li>
+<li>subject-level sign-flips via <code><a href="../reference/null_one_sample.html">null_one_sample()</a></code> /
+<code><a href="../reference/null_subject_signflip.html">null_subject_signflip()</a></code>.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">study</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_resampling_fwer_study.html">run_resampling_fwer_study</a></span><span class="op">(</span></span>
+<span>  n_sims <span class="op">=</span> <span class="fl">40</span>,</span>
+<span>  dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">10</span>, <span class="fl">10</span><span class="op">)</span>,</span>
+<span>  n_subj <span class="op">=</span> <span class="fl">16</span>,</span>
+<span>  n_perm <span class="op">=</span> <span class="fl">80</span>,</span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  cluster_thresh <span class="op">=</span> <span class="fl">2.5</span>,</span>
+<span>  fwhm_vox <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  tail <span class="op">=</span> <span class="st">"pos"</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">2026</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">study</span><span class="op">$</span><span class="va">summary</span></span></code></pre></div>
+<p>In this type of null experiment, the “any discovery” rate estimates
+FWER (and equals FDR for cluster-FDR under the complete null). This
+gives a practical calibration check for your resampling assumptions
+before running real inference.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

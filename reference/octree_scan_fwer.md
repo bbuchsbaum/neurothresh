@@ -10,45 +10,68 @@ permutation (sign-flip) procedure.
 
 ``` r
 octree_scan_fwer(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   mask = NULL,
   alpha = 0.05,
-  n_perm = 1000,
+  tail = c("pos", "neg", "two"),
+  prior_eta = 0.9,
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
   null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
   null_fun = NULL,
   fwhm_vox = NULL,
   fwhm_mm = NULL,
   acf_params = NULL,
-  seed = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9
+  two_sided = NULL
 )
 ```
 
 ## Arguments
 
-- z_vol:
+- stat_vol:
 
   A 3D volume-like object with finite values in-brain.
 
 - prior_vol:
 
-  Optional prior weight volume aligned to `z_vol`. If NULL, uniform
+  Optional prior weight volume aligned to `stat_vol`. If NULL, uniform
   weights are used.
 
 - mask:
 
-  Optional logical mask (same shape as `z_vol`). If NULL, uses all
-  finite voxels in `z_vol`.
+  Optional logical mask (same shape as `stat_vol`). If NULL, uses all
+  finite voxels in `stat_vol`.
 
 - alpha:
 
   Significance level for strong FWER control (default 0.05).
 
+- tail:
+
+  One of `"pos"`, `"neg"`, or `"two"`.
+
+- prior_eta:
+
+  Mixing weight in \[0, 1\] to shrink the prior toward uniform mass
+  (default 0.9).
+
+- null_spec:
+
+  Optional
+  [`null_spec`](https://bbuchsbaum.github.io/neurothresh/reference/null_spec.md)
+  supplying deterministic null draws. If supplied and `null_fun` is
+  NULL, its `draw` function is used.
+
 - n_perm:
 
-  Number of permutations/sign-flips (default 1000).
+  Number of permutations/sign-flips. Defaults to `null_spec$n_perm` when
+  `null_spec` is supplied, otherwise 1000.
+
+- seed:
+
+  Optional RNG seed for reproducibility.
 
 - null:
 
@@ -107,18 +130,9 @@ octree_scan_fwer(
 
   :   Exponential kernel scale in voxel units (length 1 or 3).
 
-- seed:
-
-  Optional RNG seed for reproducibility.
-
 - two_sided:
 
-  Logical; if TRUE, uses `abs(z_vol)` prior to sign-flips.
-
-- prior_eta:
-
-  Mixing weight in \[0, 1\] to shrink the prior toward uniform mass
-  (default 0.9).
+  Logical; if TRUE, uses `abs(stat_vol)` prior to sign-flips.
 
 ## Value
 
@@ -162,6 +176,17 @@ use such randomizations.
 
 For hierarchical step-down over sibling families during descent, see
 [`octree_scan_stepdown`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md).
+
+## See also
+
+[`octree_scan_stepdown`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md)
+for hierarchical step-down;
+[`hier_scan`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)
+for LR-MFT hierarchical inference;
+[`tfce_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md)
+and
+[`rft_peak_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/rft_peak_fwer.md)
+for alternative methods.
 
 ## Examples
 

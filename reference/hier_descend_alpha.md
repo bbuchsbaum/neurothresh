@@ -20,7 +20,9 @@ hier_descend_alpha(
   kappa_grid,
   gamma = 0.5,
   min_alpha = 1e-06,
-  min_voxels = 8
+  min_voxels = 8,
+  parallel = FALSE,
+  future_packages = NULL
 )
 ```
 
@@ -73,6 +75,15 @@ hier_descend_alpha(
 - min_voxels:
 
   Minimum region size to test (default 8)
+
+- parallel:
+
+  Logical; if TRUE, use `future.apply` to parallelize the permutation
+  loop (internal).
+
+- future_packages:
+
+  Character vector of packages to load in future workers (internal).
 
 ## Value
 

@@ -14,6 +14,8 @@ Two-sided cluster FDR
   fwhm_mm,
   n_perm,
   two_sided_policy,
-  seed
+  seed,
+  draw_fun,
+  call_capture
 )
 ```

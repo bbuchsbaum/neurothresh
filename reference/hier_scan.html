@@ -17,12 +17,15 @@ thresholding with stepdown inference."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/neurothresh.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/neurothresh-intro.html">Introduction to neurothresh</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/lisa-local-adaptive-inference.html">Local Adaptive Inference with LISA</a></li>
+    <li><a class="dropdown-item" href="../articles/scale-space-localized-energy.html">Scale-Space Localized Energy Inference</a></li>
     <li><a class="dropdown-item" href="../articles/simulation-validation.html">Simulation Validation: FWER and Power</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/bbuchsbaum/neurothresh/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -47,12 +50,15 @@ thresholding with stepdown inference.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">hier_scan</span><span class="op">(</span></span>
-<span>  <span class="va">z_vol</span>,</span>
+<span>  <span class="va">stat_vol</span>,</span>
 <span>  prior_vol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  parcels <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  tail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pos"</span>, <span class="st">"neg"</span>, <span class="st">"two"</span><span class="op">)</span>,</span>
 <span>  kappa <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  prior_eta <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>  null_spec <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  n_perm <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stepdown"</span>, <span class="st">"hierarchical"</span><span class="op">)</span>,</span>
 <span>  gamma <span class="op">=</span> <span class="fl">0.5</span>,</span>
@@ -60,10 +66,7 @@ thresholding with stepdown inference.</p>
 <span>  min_voxels <span class="op">=</span> <span class="fl">8</span>,</span>
 <span>  min_alpha <span class="op">=</span> <span class="fl">1e-06</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  stat_type <span class="op">=</span> <span class="st">"Z"</span>,</span>
-<span>  df <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  two_sided <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  prior_eta <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>  two_sided <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  n_workers <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -73,7 +76,7 @@ thresholding with stepdown inference.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-z-vol">z_vol<a class="anchor" aria-label="anchor" href="#arg-z-vol"></a></dt>
+<dl><dt id="arg-stat-vol">stat_vol<a class="anchor" aria-label="anchor" href="#arg-stat-vol"></a></dt>
 <dd><p>A NeuroVol object containing Z-scores (or other stat type)</p></dd>
 
 
@@ -89,16 +92,29 @@ initialization. If NULL, starts from whole brain with octree descent.</p></dd>
 
 <dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
 <dd><p>Optional LogicalNeuroVol defining analysis domain. If NULL,
-uses all finite voxels in z_vol.</p></dd>
+uses all finite voxels in <code>stat_vol</code>.</p></dd>
 
 
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
 <dd><p>Significance level for FWER control (default 0.05)</p></dd>
 
 
+<dt id="arg-tail">tail<a class="anchor" aria-label="anchor" href="#arg-tail"></a></dt>
+<dd><p>One of <code>"pos"</code>, <code>"neg"</code>, or <code>"two"</code>.</p></dd>
+
+
 <dt id="arg-kappa">kappa<a class="anchor" aria-label="anchor" href="#arg-kappa"></a></dt>
 <dd><p>Temperature parameter(s) for soft-max. Can be a single value
 or vector of values to search over.</p></dd>
+
+
+<dt id="arg-prior-eta">prior_eta<a class="anchor" aria-label="anchor" href="#arg-prior-eta"></a></dt>
+<dd><p>Mixing weight for prior smoothing with uniform mass.
+Values in [0, 1], where 0 is uniform and 1 is the raw prior.</p></dd>
+
+
+<dt id="arg-null-spec">null_spec<a class="anchor" aria-label="anchor" href="#arg-null-spec"></a></dt>
+<dd><p>Reserved null specification argument for API consistency.</p></dd>
 
 
 <dt id="arg-n-perm">n_perm<a class="anchor" aria-label="anchor" href="#arg-n-perm"></a></dt>
@@ -131,21 +147,9 @@ or vector of values to search over.</p></dd>
 <dd><p>Random seed for reproducibility</p></dd>
 
 
-<dt id="arg-stat-type">stat_type<a class="anchor" aria-label="anchor" href="#arg-stat-type"></a></dt>
-<dd><p>Input statistic type: "Z", "t", or "neglog10p"</p></dd>
-
-
-<dt id="arg-df">df<a class="anchor" aria-label="anchor" href="#arg-df"></a></dt>
-<dd><p>Degrees of freedom (required if stat_type = "t")</p></dd>
-
-
 <dt id="arg-two-sided">two_sided<a class="anchor" aria-label="anchor" href="#arg-two-sided"></a></dt>
-<dd><p>Logical, whether to perform two-sided inference</p></dd>
-
-
-<dt id="arg-prior-eta">prior_eta<a class="anchor" aria-label="anchor" href="#arg-prior-eta"></a></dt>
-<dd><p>Mixing weight for prior smoothing with uniform mass.
-Values in [0, 1], where 0 is uniform and 1 is the raw prior.</p></dd>
+<dd><p>Deprecated logical shortcut. If TRUE and <code>tail = "pos"</code>,
+uses <code>tail = "two"</code>.</p></dd>
 
 
 <dt id="arg-parallel">parallel<a class="anchor" aria-label="anchor" href="#arg-parallel"></a></dt>
@@ -185,6 +189,13 @@ Ignored unless <code>parallel = TRUE</code> and the future package is installed.
 <li><p>At each level, test children with step-down, spend alpha budget</p></li>
 <li><p>Collect all significant regions</p></li>
 </ol></div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="octree_scan_fwer.html">octree_scan_fwer</a></code> for a global maxT scan;
+<code><a href="octree_scan_stepdown.html">octree_scan_stepdown</a></code> for octree step-down;
+<code><a href="tfce_fwer.html">tfce_fwer</a></code> and <code><a href="rft_peak_fwer.html">rft_peak_fwer</a></code> for alternative
+thresholding approaches.</p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>

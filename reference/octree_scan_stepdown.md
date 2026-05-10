@@ -9,49 +9,91 @@ step-down procedure *within each sibling family* during octree descent
 
 ``` r
 octree_scan_stepdown(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   mask = NULL,
   alpha = 0.05,
-  n_perm = 1000,
+  tail = c("pos", "neg", "two"),
+  prior_eta = 0.9,
+  gamma = 0.5,
+  min_voxels = 8,
+  min_alpha = 1e-06,
+  report = c("coarsest", "finest", "greedy"),
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
   null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
   null_fun = NULL,
   fwhm_vox = NULL,
   fwhm_mm = NULL,
   acf_params = NULL,
-  gamma = 0.5,
-  min_voxels = 8,
-  min_alpha = 1e-06,
-  report = c("coarsest", "finest", "greedy"),
-  seed = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9
+  two_sided = NULL
 )
 ```
 
 ## Arguments
 
-- z_vol:
+- stat_vol:
 
   A 3D volume-like object containing Z-equivalent values.
 
 - prior_vol:
 
-  Optional prior weight volume aligned to `z_vol`. If NULL, uniform
+  Optional prior weight volume aligned to `stat_vol`. If NULL, uniform
   weights are used.
 
 - mask:
 
-  Optional logical mask (same shape as `z_vol`). If NULL, uses all
-  finite voxels in `z_vol`.
+  Optional logical mask (same shape as `stat_vol`). If NULL, uses all
+  finite voxels in `stat_vol`.
 
 - alpha:
 
   FWER target (default 0.05).
 
+- tail:
+
+  One of `"pos"`, `"neg"`, or `"two"`.
+
+- prior_eta:
+
+  Mixing weight in \[0, 1\] to shrink the prior toward uniform mass
+  (default 0.9).
+
+- gamma:
+
+  Fraction of the local alpha budget used to test the current sibling
+  family (default 0.5). Remaining budget is split among rejected
+  children by prior mass.
+
+- min_voxels:
+
+  Minimum child size to consider for descent (default 8).
+
+- min_alpha:
+
+  Minimum alpha budget to continue descent (default 1e-6).
+
+- report:
+
+  How to select a non-redundant set of regions from the discovered
+  significant nodes: `"coarsest"`, `"finest"`, or `"greedy"`.
+
+- null_spec:
+
+  Optional
+  [`null_spec`](https://bbuchsbaum.github.io/neurothresh/reference/null_spec.md)
+  supplying deterministic null draws. If supplied and `null_fun` is
+  NULL, its `draw` function is used.
+
 - n_perm:
 
-  Number of sign-flip permutations per tested family (default 1000).
+  Number of sign-flip permutations per tested family. Defaults to
+  `null_spec$n_perm` when `null_spec` is supplied, otherwise 1000.
+
+- seed:
+
+  Optional RNG seed.
 
 - null:
 
@@ -110,38 +152,10 @@ octree_scan_stepdown(
 
   :   Exponential kernel scale in voxel units (length 1 or 3).
 
-- gamma:
-
-  Fraction of the local alpha budget used to test the current sibling
-  family (default 0.5). Remaining budget is split among rejected
-  children by prior mass.
-
-- min_voxels:
-
-  Minimum child size to consider for descent (default 8).
-
-- min_alpha:
-
-  Minimum alpha budget to continue descent (default 1e-6).
-
-- report:
-
-  How to select a non-redundant set of regions from the discovered
-  significant nodes: `"coarsest"`, `"finest"`, or `"greedy"`.
-
-- seed:
-
-  Optional RNG seed.
-
 - two_sided:
 
-  Logical; if TRUE, uses `abs(z_vol)` for the observed map and
+  Logical; if TRUE, uses `abs(stat_vol)` for the observed map and
   permutations (two-sided via absolute Z).
-
-- prior_eta:
-
-  Mixing weight in \[0, 1\] to shrink the prior toward uniform mass
-  (default 0.9).
 
 ## Value
 
@@ -181,3 +195,12 @@ full set of dyadic cubes (which would require the joint null
 distribution over all hypotheses). Use
 [`octree_scan_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
 for a single-step maxT procedure over the full dyadic-cube family.
+
+## See also
+
+[`octree_scan_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
+for single-step maxT calibration;
+[`hier_scan`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)
+for LR-MFT hierarchical inference;
+[`cluster_fdr`](https://bbuchsbaum.github.io/neurothresh/reference/cluster_fdr.md)
+for cluster-level FDR control.

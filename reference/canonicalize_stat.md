@@ -93,12 +93,12 @@ A list with components:
 
 The conversions are:
 
-- Z-scores: Used directly
+- Z-scores: used directly.
 
-- t-statistics: Converted via `qnorm(pt(t, df))`
+- t-statistics: converted via `qnorm(pt(t, df))`.
 
-- -log10(p): Converted via `qnorm(1 - 10^(-x))` with optional sign
-  recovery from `sign_vol`
+- -log10(p): converted via `qnorm(1 - 10^(-x))` with optional sign
+  recovery from `sign_vol`.
 
 ## Examples
 

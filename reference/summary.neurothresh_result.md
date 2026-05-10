@@ -1,6 +1,6 @@
-# Summary method for neurothresh_result
+# Summarize a neurothresh result
 
-Summary method for neurothresh_result
+Summarize a neurothresh result
 
 ## Usage
 
@@ -13,8 +13,13 @@ summary(object, ...)
 
 - object:
 
-  A neurothresh_result object
+  A `neurothresh_result`.
 
 - ...:
 
-  Additional arguments (ignored)
+  Unused.
+
+## Value
+
+The result object invisibly; prints a richer summary including cluster
+table head when present.

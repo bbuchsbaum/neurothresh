@@ -9,14 +9,18 @@ Benjamini-Hochberg procedure to cluster-extent p-values.
 cluster_fdr(
   stat_vol,
   mask = NULL,
-  cluster_thresh = 3,
   q = 0.05,
-  p_method = c("rft", "perm"),
-  fwhm_mm = NULL,
-  n_perm = 5000,
   tail = c("pos", "neg", "two"),
-  two_sided_policy = c("BH_all", "split_q"),
-  seed = NULL
+  cluster_thresh = 3,
+  p_method = c("rft", "perm"),
+  smoothness = NULL,
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
+  fwhm_mm = NULL,
+  null_fun = NULL,
+  allow_voxel_signflip = FALSE,
+  two_sided_policy = c("BH_all", "split_q")
 )
 ```
 
@@ -24,83 +28,83 @@ cluster_fdr(
 
 - stat_vol:
 
-  NeuroVol containing statistic map
+  3D Z-equivalent statistic map (array or `NeuroVol`).
 
 - mask:
 
-  Optional LogicalNeuroVol for analysis domain
-
-- cluster_thresh:
-
-  Cluster-forming threshold (Z-score)
+  Optional logical 3D mask. Defaults to finite voxels in `stat_vol`.
 
 - q:
 
-  FDR level (default 0.05)
-
-- p_method:
-
-  Method for computing cluster p-values: "rft" (Random Field Theory) or
-  "perm" (permutation)
-
-- fwhm_mm:
-
-  Smoothness in mm (required for p_method = "rft")
-
-- n_perm:
-
-  Number of permutations (for p_method = "perm")
+  FDR level (default 0.05).
 
 - tail:
 
-  "pos", "neg", or "two"
+  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, both tails are pooled
+  into a single BH ordering.
 
-- two_sided_policy:
+- cluster_thresh:
 
-  For two-sided: "BH_all" (pool both tails) or "split_q" (q/2 per tail)
+  Cluster-forming threshold (Z-score).
+
+- p_method:
+
+  Method for computing cluster p-values: `"rft"` (Random Field Theory)
+  or `"perm"` (permutation).
+
+- smoothness:
+
+  A
+  [`smoothness_fwhm()`](https://bbuchsbaum.github.io/neurothresh/reference/smoothness_fwhm.md)
+  (or numeric mm) — required when `p_method = "rft"`. Ignored otherwise.
+
+- null_spec:
+
+  A
+  [`null_spec`](https://bbuchsbaum.github.io/neurothresh/reference/null_spec.md)
+  supplying null draws — required when `p_method = "perm"`.
+
+- n_perm:
+
+  Number of permutations to consume from `null_spec`. Defaults to
+  `null_spec$n_perm`.
 
 - seed:
 
-  Random seed for permutation
+  Optional random seed.
+
+- fwhm_mm:
+
+  Deprecated alias for `smoothness`.
+
+- null_fun:
+
+  Deprecated bare-function null source; prefer `null_spec`.
+
+- allow_voxel_signflip:
+
+  Deprecated; if `TRUE` and `null_spec`/`null_fun` are missing, falls
+  back to independent voxel sign-flips.
+
+- two_sided_policy:
+
+  Deprecated. The `"two"` tail now uses BH on the pooled set of clusters
+  (the previous `"BH_all"` behaviour). Pass `"split_q"` only if you need
+  the legacy q/2 split per tail.
 
 ## Value
 
-List with components:
-
-- sig_mask:
-
-  Logical mask of FDR-significant clusters
-
-- table:
-
-  Data frame with cluster statistics
-
-- n_clusters:
-
-  Number of significant clusters
-
-## Details
-
-This implements "topological FDR" as advocated by Chumbley & Friston,
-where FDR is controlled over the finite set of clusters rather than over
-all voxels.
+A
+[`neurothresh_result`](https://bbuchsbaum.github.io/neurothresh/reference/new_neurothresh_result.md)
+with `method = "cluster_fdr"` and the cluster table in `$clusters`.
+`$threshold` is `cluster_thresh`.
 
 ## References
 
-Chumbley, J. R., & Friston, K. J. (2009). False discovery rate
-revisited: FDR and topological inference using Gaussian random fields.
-NeuroImage, 44(1), 62-70.
+Chumbley & Friston (2009), NeuroImage 44(1), 62-70.
 
-## Examples
+## See also
 
-``` r
-if (FALSE) { # \dontrun{
-# RFT-based cluster FDR
-result <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05,
-                      p_method = "rft", fwhm_mm = 8)
-
-# Permutation-based cluster FDR
-result <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05,
-                      p_method = "perm", n_perm = 5000)
-} # }
-```
+[`rft_cluster_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/rft_cluster_fwer.md),
+[`tfce_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md),
+[`hier_scan()`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md).

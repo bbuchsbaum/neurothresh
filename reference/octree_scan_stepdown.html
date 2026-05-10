@@ -21,12 +21,15 @@ step-down procedure within each sibling family during octree descent
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/neurothresh.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/neurothresh-intro.html">Introduction to neurothresh</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/lisa-local-adaptive-inference.html">Local Adaptive Inference with LISA</a></li>
+    <li><a class="dropdown-item" href="../articles/scale-space-localized-energy.html">Scale-Space Localized Energy Inference</a></li>
     <li><a class="dropdown-item" href="../articles/simulation-validation.html">Simulation Validation: FWER and Power</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/bbuchsbaum/neurothresh/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -53,23 +56,25 @@ step-down procedure <em>within each sibling family</em> during octree descent
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">octree_scan_stepdown</span><span class="op">(</span></span>
-<span>  <span class="va">z_vol</span>,</span>
+<span>  <span class="va">stat_vol</span>,</span>
 <span>  prior_vol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>  n_perm <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  tail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pos"</span>, <span class="st">"neg"</span>, <span class="st">"two"</span><span class="op">)</span>,</span>
+<span>  prior_eta <span class="op">=</span> <span class="fl">0.9</span>,</span>
+<span>  gamma <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  min_voxels <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  min_alpha <span class="op">=</span> <span class="fl">1e-06</span>,</span>
+<span>  report <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"coarsest"</span>, <span class="st">"finest"</span>, <span class="st">"greedy"</span><span class="op">)</span>,</span>
+<span>  null_spec <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_perm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  null <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"signflip_voxel"</span>, <span class="st">"mc_fwhm"</span>, <span class="st">"mc_acf"</span><span class="op">)</span>,</span>
 <span>  null_fun <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fwhm_vox <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fwhm_mm <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  acf_params <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  gamma <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>  min_voxels <span class="op">=</span> <span class="fl">8</span>,</span>
-<span>  min_alpha <span class="op">=</span> <span class="fl">1e-06</span>,</span>
-<span>  report <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"coarsest"</span>, <span class="st">"finest"</span>, <span class="st">"greedy"</span><span class="op">)</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  two_sided <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  prior_eta <span class="op">=</span> <span class="fl">0.9</span></span>
+<span>  two_sided <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -77,26 +82,64 @@ step-down procedure <em>within each sibling family</em> during octree descent
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-z-vol">z_vol<a class="anchor" aria-label="anchor" href="#arg-z-vol"></a></dt>
+<dl><dt id="arg-stat-vol">stat_vol<a class="anchor" aria-label="anchor" href="#arg-stat-vol"></a></dt>
 <dd><p>A 3D volume-like object containing Z-equivalent values.</p></dd>
 
 
 <dt id="arg-prior-vol">prior_vol<a class="anchor" aria-label="anchor" href="#arg-prior-vol"></a></dt>
-<dd><p>Optional prior weight volume aligned to <code>z_vol</code>.
+<dd><p>Optional prior weight volume aligned to <code>stat_vol</code>.
 If NULL, uniform weights are used.</p></dd>
 
 
 <dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
-<dd><p>Optional logical mask (same shape as <code>z_vol</code>). If NULL,
-uses all finite voxels in <code>z_vol</code>.</p></dd>
+<dd><p>Optional logical mask (same shape as <code>stat_vol</code>). If NULL,
+uses all finite voxels in <code>stat_vol</code>.</p></dd>
 
 
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
 <dd><p>FWER target (default 0.05).</p></dd>
 
 
+<dt id="arg-tail">tail<a class="anchor" aria-label="anchor" href="#arg-tail"></a></dt>
+<dd><p>One of <code>"pos"</code>, <code>"neg"</code>, or <code>"two"</code>.</p></dd>
+
+
+<dt id="arg-prior-eta">prior_eta<a class="anchor" aria-label="anchor" href="#arg-prior-eta"></a></dt>
+<dd><p>Mixing weight in [0, 1] to shrink the prior toward uniform
+mass (default 0.9).</p></dd>
+
+
+<dt id="arg-gamma">gamma<a class="anchor" aria-label="anchor" href="#arg-gamma"></a></dt>
+<dd><p>Fraction of the local alpha budget used to test the current
+sibling family (default 0.5). Remaining budget is split among rejected
+children by prior mass.</p></dd>
+
+
+<dt id="arg-min-voxels">min_voxels<a class="anchor" aria-label="anchor" href="#arg-min-voxels"></a></dt>
+<dd><p>Minimum child size to consider for descent (default 8).</p></dd>
+
+
+<dt id="arg-min-alpha">min_alpha<a class="anchor" aria-label="anchor" href="#arg-min-alpha"></a></dt>
+<dd><p>Minimum alpha budget to continue descent (default 1e-6).</p></dd>
+
+
+<dt id="arg-report">report<a class="anchor" aria-label="anchor" href="#arg-report"></a></dt>
+<dd><p>How to select a non-redundant set of regions from the discovered
+significant nodes: <code>"coarsest"</code>, <code>"finest"</code>, or <code>"greedy"</code>.</p></dd>
+
+
+<dt id="arg-null-spec">null_spec<a class="anchor" aria-label="anchor" href="#arg-null-spec"></a></dt>
+<dd><p>Optional <code><a href="null_spec.html">null_spec</a></code> supplying deterministic null draws.
+If supplied and <code>null_fun</code> is NULL, its <code>draw</code> function is used.</p></dd>
+
+
 <dt id="arg-n-perm">n_perm<a class="anchor" aria-label="anchor" href="#arg-n-perm"></a></dt>
-<dd><p>Number of sign-flip permutations per tested family (default 1000).</p></dd>
+<dd><p>Number of sign-flip permutations per tested family. Defaults
+to <code>null_spec$n_perm</code> when <code>null_spec</code> is supplied, otherwise 1000.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>Optional RNG seed.</p></dd>
 
 
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
@@ -151,37 +194,9 @@ available.</p></dd>
 </dl></dd>
 
 
-<dt id="arg-gamma">gamma<a class="anchor" aria-label="anchor" href="#arg-gamma"></a></dt>
-<dd><p>Fraction of the local alpha budget used to test the current
-sibling family (default 0.5). Remaining budget is split among rejected
-children by prior mass.</p></dd>
-
-
-<dt id="arg-min-voxels">min_voxels<a class="anchor" aria-label="anchor" href="#arg-min-voxels"></a></dt>
-<dd><p>Minimum child size to consider for descent (default 8).</p></dd>
-
-
-<dt id="arg-min-alpha">min_alpha<a class="anchor" aria-label="anchor" href="#arg-min-alpha"></a></dt>
-<dd><p>Minimum alpha budget to continue descent (default 1e-6).</p></dd>
-
-
-<dt id="arg-report">report<a class="anchor" aria-label="anchor" href="#arg-report"></a></dt>
-<dd><p>How to select a non-redundant set of regions from the discovered
-significant nodes: <code>"coarsest"</code>, <code>"finest"</code>, or <code>"greedy"</code>.</p></dd>
-
-
-<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>Optional RNG seed.</p></dd>
-
-
 <dt id="arg-two-sided">two_sided<a class="anchor" aria-label="anchor" href="#arg-two-sided"></a></dt>
-<dd><p>Logical; if TRUE, uses <code>abs(z_vol)</code> for the observed map
+<dd><p>Logical; if TRUE, uses <code>abs(stat_vol)</code> for the observed map
 and permutations (two-sided via absolute Z).</p></dd>
-
-
-<dt id="arg-prior-eta">prior_eta<a class="anchor" aria-label="anchor" href="#arg-prior-eta"></a></dt>
-<dd><p>Mixing weight in [0, 1] to shrink the prior toward uniform
-mass (default 0.9).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -212,6 +227,12 @@ tree and tests only small sibling families (&lt;= 8) at each split.</p>
 set of dyadic cubes (which would require the joint null distribution over
 all hypotheses). Use <code><a href="octree_scan_fwer.html">octree_scan_fwer</a></code> for a single-step maxT
 procedure over the full dyadic-cube family.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="octree_scan_fwer.html">octree_scan_fwer</a></code> for single-step maxT calibration;
+<code><a href="hier_scan.html">hier_scan</a></code> for LR-MFT hierarchical inference;
+<code><a href="cluster_fdr.html">cluster_fdr</a></code> for cluster-level FDR control.</p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

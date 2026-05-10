@@ -26,6 +26,7 @@ lookup) - Inherits `data` (sparseVector) from SparseNeuroVol
 **Constructor:**
 
 ``` r
+
 ClusteredNeuroVol(mask, clusters, label_map=NULL, label="")
 ```
 
@@ -142,18 +143,19 @@ values - `series_roi(vec, coords)` → ROIVec
 
 ### Available Atlases
 
-| Atlas     | Function                                | Regions  | Notes                  |
-|-----------|-----------------------------------------|----------|------------------------|
-| Schaefer  | `get_schaefer_atlas(parcels, networks)` | 100-1000 | 7 or 17 networks       |
-| Glasser   | `get_glasser_atlas()`                   | 360      | Multi-modal cortical   |
-| ASEG      | `get_aseg_atlas()`                      | ~33      | FreeSurfer subcortical |
-| Olsen MTL | `get_olsen_mtl()`                       | 16       | Medial temporal lobe   |
+| Atlas | Function | Regions | Notes |
+|----|----|----|----|
+| Schaefer | `get_schaefer_atlas(parcels, networks)` | 100-1000 | 7 or 17 networks |
+| Glasser | `get_glasser_atlas()` | 360 | Multi-modal cortical |
+| ASEG | `get_aseg_atlas()` | ~33 | FreeSurfer subcortical |
+| Olsen MTL | `get_olsen_mtl()` | 16 | Medial temporal lobe |
 
 **Convenience:** `sy_200_7()`, `sy_400_17()`, etc.
 
 ### Atlas Object Structure
 
 ``` r
+
 atlas <- list(
   name = "Schaefer-300-7networks",
   atlas = ClusteredNeuroVol(...),  # The volume
@@ -189,6 +191,7 @@ standard templates - `get_template_brainmask()` - brain mask
 ### Working with Parcellations
 
 ``` r
+
 # Load atlas
 atlas <- neuroatlas::get_schaefer_atlas(parcels="200", networks="7")
 
@@ -211,6 +214,7 @@ parcel_mask <- neuroim2::as.logical(rois[[k]])
 ### Reducing 4D Data by Parcels
 
 ``` r
+
 # Load 4D fMRI
 vec <- neuroim2::read_vec("fmri.nii")
 
@@ -224,6 +228,7 @@ ts_matrix <- as.matrix(cvec)
 ### Spatial Operations
 
 ``` r
+
 # Get parcel centroids
 cents <- neuroim2::centroids(cvol, type="center_of_mass")
 

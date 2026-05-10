@@ -17,12 +17,15 @@ the Benjamini-Hochberg procedure to cluster-extent p-values."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/neurothresh.html">Get started</a></li>
+<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/neurothresh-intro.html">Introduction to neurothresh</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/lisa-local-adaptive-inference.html">Local Adaptive Inference with LISA</a></li>
+    <li><a class="dropdown-item" href="../articles/scale-space-localized-energy.html">Scale-Space Localized Energy Inference</a></li>
     <li><a class="dropdown-item" href="../articles/simulation-validation.html">Simulation Validation: FWER and Power</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/bbuchsbaum/neurothresh/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -49,14 +52,18 @@ the Benjamini-Hochberg procedure to cluster-extent p-values.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">cluster_fdr</span><span class="op">(</span></span>
 <span>  <span class="va">stat_vol</span>,</span>
 <span>  mask <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  cluster_thresh <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  q <span class="op">=</span> <span class="fl">0.05</span>,</span>
-<span>  p_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rft"</span>, <span class="st">"perm"</span><span class="op">)</span>,</span>
-<span>  fwhm_mm <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  n_perm <span class="op">=</span> <span class="fl">5000</span>,</span>
 <span>  tail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"pos"</span>, <span class="st">"neg"</span>, <span class="st">"two"</span><span class="op">)</span>,</span>
-<span>  two_sided_policy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BH_all"</span>, <span class="st">"split_q"</span><span class="op">)</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  cluster_thresh <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  p_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rft"</span>, <span class="st">"perm"</span><span class="op">)</span>,</span>
+<span>  smoothness <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  null_spec <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_perm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fwhm_mm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  null_fun <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  allow_voxel_signflip <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  two_sided_policy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BH_all"</span>, <span class="st">"split_q"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -65,87 +72,84 @@ the Benjamini-Hochberg procedure to cluster-extent p-values.</p>
 
 
 <dl><dt id="arg-stat-vol">stat_vol<a class="anchor" aria-label="anchor" href="#arg-stat-vol"></a></dt>
-<dd><p>NeuroVol containing statistic map</p></dd>
+<dd><p>3D Z-equivalent statistic map (array or <code>NeuroVol</code>).</p></dd>
 
 
 <dt id="arg-mask">mask<a class="anchor" aria-label="anchor" href="#arg-mask"></a></dt>
-<dd><p>Optional LogicalNeuroVol for analysis domain</p></dd>
-
-
-<dt id="arg-cluster-thresh">cluster_thresh<a class="anchor" aria-label="anchor" href="#arg-cluster-thresh"></a></dt>
-<dd><p>Cluster-forming threshold (Z-score)</p></dd>
+<dd><p>Optional logical 3D mask. Defaults to finite voxels in
+<code>stat_vol</code>.</p></dd>
 
 
 <dt id="arg-q">q<a class="anchor" aria-label="anchor" href="#arg-q"></a></dt>
-<dd><p>FDR level (default 0.05)</p></dd>
-
-
-<dt id="arg-p-method">p_method<a class="anchor" aria-label="anchor" href="#arg-p-method"></a></dt>
-<dd><p>Method for computing cluster p-values:
-"rft" (Random Field Theory) or "perm" (permutation)</p></dd>
-
-
-<dt id="arg-fwhm-mm">fwhm_mm<a class="anchor" aria-label="anchor" href="#arg-fwhm-mm"></a></dt>
-<dd><p>Smoothness in mm (required for p_method = "rft")</p></dd>
-
-
-<dt id="arg-n-perm">n_perm<a class="anchor" aria-label="anchor" href="#arg-n-perm"></a></dt>
-<dd><p>Number of permutations (for p_method = "perm")</p></dd>
+<dd><p>FDR level (default 0.05).</p></dd>
 
 
 <dt id="arg-tail">tail<a class="anchor" aria-label="anchor" href="#arg-tail"></a></dt>
-<dd><p>"pos", "neg", or "two"</p></dd>
+<dd><p>One of <code>"pos"</code>, <code>"neg"</code>, <code>"two"</code>. For <code>"two"</code>, both tails are
+pooled into a single BH ordering.</p></dd>
 
 
-<dt id="arg-two-sided-policy">two_sided_policy<a class="anchor" aria-label="anchor" href="#arg-two-sided-policy"></a></dt>
-<dd><p>For two-sided: "BH_all" (pool both tails) or
-"split_q" (q/2 per tail)</p></dd>
+<dt id="arg-cluster-thresh">cluster_thresh<a class="anchor" aria-label="anchor" href="#arg-cluster-thresh"></a></dt>
+<dd><p>Cluster-forming threshold (Z-score).</p></dd>
+
+
+<dt id="arg-p-method">p_method<a class="anchor" aria-label="anchor" href="#arg-p-method"></a></dt>
+<dd><p>Method for computing cluster p-values: <code>"rft"</code> (Random
+Field Theory) or <code>"perm"</code> (permutation).</p></dd>
+
+
+<dt id="arg-smoothness">smoothness<a class="anchor" aria-label="anchor" href="#arg-smoothness"></a></dt>
+<dd><p>A <code><a href="smoothness_fwhm.html">smoothness_fwhm()</a></code> (or numeric mm) — required when
+<code>p_method = "rft"</code>. Ignored otherwise.</p></dd>
+
+
+<dt id="arg-null-spec">null_spec<a class="anchor" aria-label="anchor" href="#arg-null-spec"></a></dt>
+<dd><p>A <code><a href="null_spec.html">null_spec</a></code> supplying null draws — required when
+<code>p_method = "perm"</code>.</p></dd>
+
+
+<dt id="arg-n-perm">n_perm<a class="anchor" aria-label="anchor" href="#arg-n-perm"></a></dt>
+<dd><p>Number of permutations to consume from <code>null_spec</code>. Defaults
+to <code>null_spec$n_perm</code>.</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>Random seed for permutation</p></dd>
+<dd><p>Optional random seed.</p></dd>
+
+
+<dt id="arg-fwhm-mm">fwhm_mm<a class="anchor" aria-label="anchor" href="#arg-fwhm-mm"></a></dt>
+<dd><p>Deprecated alias for <code>smoothness</code>.</p></dd>
+
+
+<dt id="arg-null-fun">null_fun<a class="anchor" aria-label="anchor" href="#arg-null-fun"></a></dt>
+<dd><p>Deprecated bare-function null source; prefer <code>null_spec</code>.</p></dd>
+
+
+<dt id="arg-allow-voxel-signflip">allow_voxel_signflip<a class="anchor" aria-label="anchor" href="#arg-allow-voxel-signflip"></a></dt>
+<dd><p>Deprecated; if <code>TRUE</code> and <code>null_spec</code>/<code>null_fun</code>
+are missing, falls back to independent voxel sign-flips.</p></dd>
+
+
+<dt id="arg-two-sided-policy">two_sided_policy<a class="anchor" aria-label="anchor" href="#arg-two-sided-policy"></a></dt>
+<dd><p>Deprecated. The <code>"two"</code> tail now uses BH on the
+pooled set of clusters (the previous <code>"BH_all"</code> behaviour). Pass
+<code>"split_q"</code> only if you need the legacy q/2 split per tail.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>List with components:</p><dl><dt>sig_mask</dt>
-<dd><p>Logical mask of FDR-significant clusters</p></dd>
-
-<dt>table</dt>
-<dd><p>Data frame with cluster statistics</p></dd>
-
-<dt>n_clusters</dt>
-<dd><p>Number of significant clusters</p></dd>
-
-
-</dl></div>
-    <div class="section level2">
-    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>This implements "topological FDR" as advocated by Chumbley &amp; Friston,
-where FDR is controlled over the finite set of clusters rather than
-over all voxels.</p>
+    <p>A <code><a href="new_neurothresh_result.html">neurothresh_result</a></code> with <code>method = "cluster_fdr"</code> and the
+cluster table in <code>$clusters</code>. <code>$threshold</code> is <code>cluster_thresh</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
-    <p>Chumbley, J. R., &amp; Friston, K. J. (2009). False discovery rate
-revisited: FDR and topological inference using Gaussian random fields.
-NeuroImage, 44(1), 62-70.</p>
+    <p>Chumbley &amp; Friston (2009), NeuroImage 44(1), 62-70.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="rft_cluster_fwer.html">rft_cluster_fwer()</a></code>, <code><a href="tfce_fwer.html">tfce_fwer()</a></code>, <code><a href="hier_scan.html">hier_scan()</a></code>.</p></div>
     </div>
 
-    <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="co"># RFT-based cluster FDR</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">cluster_fdr</span><span class="op">(</span><span class="va">z_map</span>, cluster_thresh <span class="op">=</span> <span class="fl">3.0</span>, q <span class="op">=</span> <span class="fl">0.05</span>,</span></span>
-<span class="r-in"><span>                      p_method <span class="op">=</span> <span class="st">"rft"</span>, fwhm_mm <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Permutation-based cluster FDR</span></span></span>
-<span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">cluster_fdr</span><span class="op">(</span><span class="va">z_map</span>, cluster_thresh <span class="op">=</span> <span class="fl">3.0</span>, q <span class="op">=</span> <span class="fl">0.05</span>,</span></span>
-<span class="r-in"><span>                      p_method <span class="op">=</span> <span class="st">"perm"</span>, n_perm <span class="op">=</span> <span class="fl">5000</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
-<span class="r-in"><span></span></span>
-</code></pre></div>
-    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

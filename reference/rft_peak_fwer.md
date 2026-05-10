@@ -9,10 +9,10 @@ using Random Field Theory.
 rft_peak_fwer(
   stat_vol,
   mask = NULL,
-  fwhm_mm,
   alpha = 0.05,
-  df = Inf,
-  tail = c("pos", "neg", "two")
+  tail = c("pos", "neg", "two"),
+  smoothness,
+  df = Inf
 )
 ```
 
@@ -20,57 +20,58 @@ rft_peak_fwer(
 
 - stat_vol:
 
-  NeuroVol containing statistic map
+  3D Z-equivalent statistic map (array or `NeuroVol`). Pass
+  already-canonicalized input (use
+  [`canonicalize()`](https://bbuchsbaum.github.io/neurothresh/reference/canonicalize.md)
+  first for t-statistics or -log10(p) maps).
 
 - mask:
 
-  Optional LogicalNeuroVol for analysis domain
-
-- fwhm_mm:
-
-  Smoothness in mm. Scalar or length-3 vector for anisotropic
-  smoothness.
+  Optional logical 3D mask. Defaults to finite voxels in `stat_vol`.
 
 - alpha:
 
-  Significance level (default 0.05)
-
-- df:
-
-  Degrees of freedom. Use Inf for Gaussian field (Z-scores).
+  Significance level (default 0.05).
 
 - tail:
 
-  "pos" (activations), "neg" (deactivations), or "two"
+  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, the test runs both
+  directions at the full `alpha` and rejects on the union (matching the
+  behaviour of the previous `rft_fwer_twosided()` helper).
+
+- smoothness:
+
+  A
+  [`smoothness_fwhm()`](https://bbuchsbaum.github.io/neurothresh/reference/smoothness_fwhm.md)
+  object specifying field smoothness in millimetres. Numeric input is
+  also accepted (length 1 or 3, mm) and coerced internally.
+
+- df:
+
+  Degrees of freedom. Use `Inf` for Gaussian field (Z-scores).
 
 ## Value
 
-List with components:
-
-- threshold:
-
-  The FWER-corrected threshold
-
-- sig_mask:
-
-  Logical mask of significant voxels
-
-- method:
-
-  "rft_peak"
+A
+[`neurothresh_result`](https://bbuchsbaum.github.io/neurothresh/reference/new_neurothresh_result.md)
+with `method = "rft_peak_fwer"`. Slots: `threshold` is the positive-side
+critical value; `reject` is the 3D logical rejection volume; `pvals` is
+`NA` (RFT does not produce per-voxel corrected p-values without further
+computation).
 
 ## Details
 
 Uses the expected Euler characteristic approximation: \$\$P(\max Z \> u)
-\approx \sum\_{d=0}^{D} \text{Resels}\_d \cdot EC_d(u)\$\$
+\approx \sum\_{d=0}^{D} \mathrm{Resels}\_d \cdot EC_d(u)\$\$
 
 For high thresholds in smooth Gaussian fields, this provides accurate
 FWER control.
 
-## Examples
+## See also
 
-``` r
-if (FALSE) { # \dontrun{
-result <- rft_peak_fwer(z_map, fwhm_mm = 8, alpha = 0.05)
-} # }
-```
+[`rft_cluster_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/rft_cluster_fwer.md)
+for cluster-level inference;
+[`tfce_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md)
+and
+[`cluster_fdr()`](https://bbuchsbaum.github.io/neurothresh/reference/cluster_fdr.md)
+for alternative methods.

@@ -13,7 +13,9 @@ test_parcels(
   n_perm,
   kappa_grid,
   alpha = 0.05,
-  seed = NULL
+  seed = NULL,
+  parallel = FALSE,
+  future_packages = NULL
 )
 ```
 
@@ -46,6 +48,15 @@ test_parcels(
 - seed:
 
   Random seed (optional)
+
+- parallel:
+
+  Logical; if TRUE, use `future.apply` to parallelize the permutation
+  loop (internal).
+
+- future_packages:
+
+  Character vector of packages to load in future workers (internal).
 
 ## Value
 

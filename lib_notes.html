@@ -15,12 +15,15 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="articles/neurothresh.html">Get started</a></li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/neurothresh-intro.html">Introduction to neurothresh</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="articles/lisa-local-adaptive-inference.html">Local Adaptive Inference with LISA</a></li>
+    <li><a class="dropdown-item" href="articles/scale-space-localized-energy.html">Scale-Space Localized Energy Inference</a></li>
     <li><a class="dropdown-item" href="articles/simulation-validation.html">Simulation Validation: FWER and Power</a></li>
   </ul></li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json"></form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/bbuchsbaum/neurothresh/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -140,23 +143,23 @@
 </ul></div>
 <div class="section level3">
 <h3 id="available-atlases">Available Atlases<a class="anchor" aria-label="anchor" href="#available-atlases"></a></h3>
-<table class="table"><colgroup><col width="21%"><col width="30%"><col width="27%"><col width="21%"></colgroup><thead><tr class="header"><th>Atlas</th>
+<table class="table"><colgroup><col width="21%"><col width="30%"><col width="27%"><col width="21%"></colgroup><thead><tr><th>Atlas</th>
 <th>Function</th>
 <th>Regions</th>
 <th>Notes</th>
-</tr></thead><tbody><tr class="odd"><td>Schaefer</td>
+</tr></thead><tbody><tr><td>Schaefer</td>
 <td><code>get_schaefer_atlas(parcels, networks)</code></td>
 <td>100-1000</td>
 <td>7 or 17 networks</td>
-</tr><tr class="even"><td>Glasser</td>
+</tr><tr><td>Glasser</td>
 <td><code>get_glasser_atlas()</code></td>
 <td>360</td>
 <td>Multi-modal cortical</td>
-</tr><tr class="odd"><td>ASEG</td>
+</tr><tr><td>ASEG</td>
 <td><code>get_aseg_atlas()</code></td>
 <td>~33</td>
 <td>FreeSurfer subcortical</td>
-</tr><tr class="even"><td>Olsen MTL</td>
+</tr><tr><td>Olsen MTL</td>
 <td><code>get_olsen_mtl()</code></td>
 <td>16</td>
 <td>Medial temporal lobe</td>

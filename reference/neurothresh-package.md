@@ -46,6 +46,14 @@ inference.
 
   Topological cluster-FDR
 
+- [`scale_space_energy`](https://bbuchsbaum.github.io/neurothresh/reference/scale_space_energy.md):
+
+  Scale-space localized energy inference
+
+- [`lisa`](https://bbuchsbaum.github.io/neurothresh/reference/lisa.md):
+
+  Local adaptive post-statistic FDR inference
+
 ## Key Concepts
 
 LR-MFT is provably more powerful than traditional GRF/RFT methods for

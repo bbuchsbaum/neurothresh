@@ -7,12 +7,15 @@ thresholding with stepdown inference.
 
 ``` r
 hier_scan(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   parcels = NULL,
   mask = NULL,
   alpha = 0.05,
+  tail = c("pos", "neg", "two"),
   kappa = c(0.5, 1, 2),
+  prior_eta = 0.9,
+  null_spec = NULL,
   n_perm = 1000,
   method = c("stepdown", "hierarchical"),
   gamma = 0.5,
@@ -20,10 +23,7 @@ hier_scan(
   min_voxels = 8,
   min_alpha = 1e-06,
   seed = NULL,
-  stat_type = "Z",
-  df = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9,
+  two_sided = NULL,
   parallel = FALSE,
   n_workers = NULL
 )
@@ -31,7 +31,7 @@ hier_scan(
 
 ## Arguments
 
-- z_vol:
+- stat_vol:
 
   A NeuroVol object containing Z-scores (or other stat type)
 
@@ -47,16 +47,29 @@ hier_scan(
 - mask:
 
   Optional LogicalNeuroVol defining analysis domain. If NULL, uses all
-  finite voxels in z_vol.
+  finite voxels in `stat_vol`.
 
 - alpha:
 
   Significance level for FWER control (default 0.05)
 
+- tail:
+
+  One of `"pos"`, `"neg"`, or `"two"`.
+
 - kappa:
 
   Temperature parameter(s) for soft-max. Can be a single value or vector
   of values to search over.
+
+- prior_eta:
+
+  Mixing weight for prior smoothing with uniform mass. Values in \[0,
+  1\], where 0 is uniform and 1 is the raw prior.
+
+- null_spec:
+
+  Reserved null specification argument for API consistency.
 
 - n_perm:
 
@@ -88,22 +101,10 @@ hier_scan(
 
   Random seed for reproducibility
 
-- stat_type:
-
-  Input statistic type: "Z", "t", or "neglog10p"
-
-- df:
-
-  Degrees of freedom (required if stat_type = "t")
-
 - two_sided:
 
-  Logical, whether to perform two-sided inference
-
-- prior_eta:
-
-  Mixing weight for prior smoothing with uniform mass. Values in \[0,
-  1\], where 0 is uniform and 1 is the raw prior.
+  Deprecated logical shortcut. If TRUE and `tail = "pos"`, uses
+  `tail = "two"`.
 
 - parallel:
 
@@ -152,6 +153,17 @@ The analysis proceeds as follows:
 4.  At each level, test children with step-down, spend alpha budget
 
 5.  Collect all significant regions
+
+## See also
+
+[`octree_scan_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
+for a global maxT scan;
+[`octree_scan_stepdown`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md)
+for octree step-down;
+[`tfce_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md)
+and
+[`rft_peak_fwer`](https://bbuchsbaum.github.io/neurothresh/reference/rft_peak_fwer.md)
+for alternative thresholding approaches.
 
 ## Examples
 

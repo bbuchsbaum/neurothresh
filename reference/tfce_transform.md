@@ -12,7 +12,7 @@ tfce_transform(
   H = 2,
   E = 0.5,
   dh = 0.1,
-  tail = c("pos", "neg")
+  tail = c("pos", "neg", "two")
 )
 ```
 
@@ -20,51 +20,42 @@ tfce_transform(
 
 - stat_vol:
 
-  NeuroVol containing statistic map
+  3D Z-equivalent statistic map (array or `NeuroVol`).
 
 - mask:
 
-  Optional LogicalNeuroVol for analysis domain
+  Optional logical 3D mask. Defaults to finite voxels in `stat_vol`.
 
 - H:
 
-  Height exponent (default 2.0)
+  Height exponent (default 2.0).
 
 - E:
 
-  Extent exponent (default 0.5)
+  Extent exponent (default 0.5).
 
 - dh:
 
-  Threshold increment (default 0.1)
+  Threshold increment (default 0.1).
 
 - tail:
 
-  "pos" for activations, "neg" for deactivations
+  One of `"pos"`, `"neg"`, `"two"`. For `"two"` the result is the
+  per-voxel maximum of the positive- and negative-tail TFCE maps.
 
 ## Value
 
-NeuroVol with TFCE-transformed values
+Volume (same type as `stat_vol`) with TFCE-transformed values.
 
 ## Details
 
-where e(h) is the extent of the cluster containing voxel v at threshold
-h.
-
-TFCE provides threshold-free inference by integrating cluster extent
-over a range of thresholds. Default parameters (H=2, E=0.5) are those
-recommended by Smith & Nichols (2009).
+where \\e(h)\\ is the extent of the cluster containing voxel \\v\\ at
+threshold \\h\\.
 
 ## References
 
-Smith, S. M., & Nichols, T. E. (2009). Threshold-free cluster
-enhancement: Addressing problems of smoothing, threshold dependence and
-localisation in cluster inference. NeuroImage, 44(1), 83-98.
+Smith & Nichols (2009), NeuroImage 44(1), 83-98.
 
-## Examples
+## See also
 
-``` r
-if (FALSE) { # \dontrun{
-tfce_map <- tfce_transform(z_map, H = 2, E = 0.5)
-} # }
-```
+[`tfce_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/tfce_fwer.md).

@@ -1,6 +1,6 @@
-# Print method for neurothresh_result
+# Print a neurothresh result
 
-Print method for neurothresh_result
+Print a neurothresh result
 
 ## Usage
 
@@ -13,8 +13,8 @@ print(x, ...)
 
 - x:
 
-  A neurothresh_result object
+  A `neurothresh_result`.
 
 - ...:
 
-  Additional arguments (ignored)
+  Unused.
