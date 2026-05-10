@@ -14,13 +14,27 @@
 #' all hypotheses). Use \code{\link{octree_scan_fwer}} for a single-step maxT
 #' procedure over the full dyadic-cube family.
 #'
-#' @param z_vol A 3D volume-like object containing Z-equivalent values.
-#' @param prior_vol Optional prior weight volume aligned to \code{z_vol}.
+#' @param stat_vol A 3D volume-like object containing Z-equivalent values.
+#' @param prior_vol Optional prior weight volume aligned to \code{stat_vol}.
 #'   If NULL, uniform weights are used.
-#' @param mask Optional logical mask (same shape as \code{z_vol}). If NULL,
-#'   uses all finite voxels in \code{z_vol}.
+#' @param mask Optional logical mask (same shape as \code{stat_vol}). If NULL,
+#'   uses all finite voxels in \code{stat_vol}.
 #' @param alpha FWER target (default 0.05).
-#' @param n_perm Number of sign-flip permutations per tested family (default 1000).
+#' @param tail One of \code{"pos"}, \code{"neg"}, or \code{"two"}.
+#' @param prior_eta Mixing weight in \[0, 1\] to shrink the prior toward uniform
+#'   mass (default 0.9).
+#' @param gamma Fraction of the local alpha budget used to test the current
+#'   sibling family (default 0.5). Remaining budget is split among rejected
+#'   children by prior mass.
+#' @param min_voxels Minimum child size to consider for descent (default 8).
+#' @param min_alpha Minimum alpha budget to continue descent (default 1e-6).
+#' @param report How to select a non-redundant set of regions from the discovered
+#'   significant nodes: \code{"coarsest"}, \code{"finest"}, or \code{"greedy"}.
+#' @param null_spec Optional [`null_spec`] supplying deterministic null draws.
+#'   If supplied and \code{null_fun} is NULL, its \code{draw} function is used.
+#' @param n_perm Number of sign-flip permutations per tested family. Defaults
+#'   to `null_spec$n_perm` when `null_spec` is supplied, otherwise 1000.
+#' @param seed Optional RNG seed.
 #' @param null Null calibration method.
 #'   \describe{
 #'     \item{\code{"mc_fwhm"}}{Correlated Monte Carlo null via Gaussian smoothing
@@ -48,18 +62,8 @@
 #'     \item{fwhm_vox}{Gaussian ACF FWHM in voxel units (length 1 or 3).}
 #'     \item{lambda_vox}{Exponential kernel scale in voxel units (length 1 or 3).}
 #'   }
-#' @param gamma Fraction of the local alpha budget used to test the current
-#'   sibling family (default 0.5). Remaining budget is split among rejected
-#'   children by prior mass.
-#' @param min_voxels Minimum child size to consider for descent (default 8).
-#' @param min_alpha Minimum alpha budget to continue descent (default 1e-6).
-#' @param report How to select a non-redundant set of regions from the discovered
-#'   significant nodes: \code{"coarsest"}, \code{"finest"}, or \code{"greedy"}.
-#' @param seed Optional RNG seed.
-#' @param two_sided Logical; if TRUE, uses \code{abs(z_vol)} for the observed map
+#' @param two_sided Logical; if TRUE, uses \code{abs(stat_vol)} for the observed map
 #'   and permutations (two-sided via absolute Z).
-#' @param prior_eta Mixing weight in \[0, 1\] to shrink the prior toward uniform
-#'   mass (default 0.9).
 #'
 #' @return A list with components:
 #'   \describe{
@@ -70,30 +74,59 @@
 #'     \item{params}{Run parameters.}
 #'   }
 #'
+#' @seealso
+#' \code{\link{octree_scan_fwer}} for single-step maxT calibration;
+#' \code{\link{hier_scan}} for LR-MFT hierarchical inference;
+#' \code{\link{cluster_fdr}} for cluster-level FDR control.
+#'
 #' @export
-octree_scan_stepdown <- function(z_vol,
+octree_scan_stepdown <- function(stat_vol,
                                  prior_vol = NULL,
                                  mask = NULL,
                                  alpha = 0.05,
-                                 n_perm = 1000,
+                                 tail = c("pos", "neg", "two"),
+                                 prior_eta = 0.9,
+                                 gamma = 0.5,
+                                 min_voxels = 8,
+                                 min_alpha = 1e-6,
+                                 report = c("coarsest", "finest", "greedy"),
+                                 null_spec = NULL,
+                                 n_perm = NULL,
+                                 seed = NULL,
                                  null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
                                  null_fun = NULL,
                                  fwhm_vox = NULL,
                                  fwhm_mm = NULL,
                                  acf_params = NULL,
-                                 gamma = 0.5,
-                                 min_voxels = 8,
-                                 min_alpha = 1e-6,
-                                 report = c("coarsest", "finest", "greedy"),
-                                 seed = NULL,
-                                 two_sided = FALSE,
-                                 prior_eta = 0.9) {
+                                 two_sided = NULL) {
   report <- match.arg(report)
   null <- match.arg(null)
+  tail <- match.arg(tail)
+  call_capture <- match.call()
+
+  if (!is.null(two_sided) && isTRUE(two_sided) && tail == "pos") tail <- "two"
+  if (!is.null(null_spec)) {
+    if (!is_null_spec(null_spec)) {
+      stop("null_spec must be a neurothresh_null_spec (see ?null_spec)")
+    }
+    if (!is.null(null_fun)) {
+      stop("provide only one of null_spec or null_fun")
+    }
+    if (is.null(n_perm)) n_perm <- null_spec$n_perm
+    if (n_perm > null_spec$n_perm) {
+      stop(sprintf("n_perm = %d exceeds null_spec$n_perm = %d",
+                   n_perm, null_spec$n_perm))
+    }
+    null_fun <- null_spec$draw
+  } else if (is.null(n_perm)) {
+    n_perm <- 1000L
+  }
+
+  z_vol <- stat_vol
   if (!is.null(seed)) set.seed(seed)
 
   dims <- dim(z_vol)
-  if (length(dims) != 3) stop("z_vol must be a 3D volume-like object")
+  if (length(dims) != 3) stop("stat_vol must be a 3D volume-like object")
 
   if (is.null(mask)) {
     mask <- is.finite(as.numeric(z_vol))
@@ -104,8 +137,10 @@ octree_scan_stepdown <- function(z_vol,
   n_mask <- length(mask_idx)
   if (n_mask == 0) stop("No valid voxels in mask")
 
-  z_vec <- as.numeric(z_vol)[mask_idx]
-  if (two_sided) z_vec <- abs(z_vec)
+  z_vec_raw <- as.numeric(z_vol)[mask_idx]
+  z_vec <- z_vec_raw
+  if (tail == "neg") z_vec <- -z_vec
+  do_abs <- tail == "two"
 
   if (is.null(prior_vol)) {
     pi_vec <- rep(1.0, n_mask)
@@ -127,7 +162,7 @@ octree_scan_stepdown <- function(z_vol,
         "or null='mc_fwhm' with an appropriate fwhm_vox.",
         call. = FALSE
       )
-      null_fun <- make_null_fun_voxel_signflip(z_vec)
+      null_fun <- make_null_fun_voxel_signflip(z_vec_raw)
     } else if (null == "mc_fwhm") {
       x0 <- as.integer(x - 1L)
       y0 <- as.integer(y - 1L)
@@ -156,7 +191,11 @@ octree_scan_stepdown <- function(z_vol,
     }
   }
 
-  perm_fun <- function(b) null_fun(b)
+  perm_fun <- function(b) {
+    z_perm <- .coerce_null_draw(null_fun(b), n_full = prod(dims), mask_idx = mask_idx)[mask_idx]
+    if (tail == "neg") z_perm <- -z_perm
+    z_perm
+  }
 
   id_env <- new.env(parent = emptyenv())
   id_env$next_id <- 1L
@@ -178,6 +217,7 @@ octree_scan_stepdown <- function(z_vol,
     x = x, y = y, z = z,
     perm_fun = perm_fun,
     n_perm = n_perm,
+    do_abs = do_abs,
     gamma = gamma,
     min_alpha = min_alpha,
     min_voxels = min_voxels,
@@ -199,30 +239,37 @@ octree_scan_stepdown <- function(z_vol,
   sig_any[sig_idx_vol] <- TRUE
   sig_mask <- .array_to_vol(sig_any, dims, z_vol)
 
-  list(
-    hits = hits,
-    selected = selected,
-    sig_mask = sig_mask,
-    sig_indices = sig_idx_vol,
+  reject <- array(sig_any, dim = dims)
+
+  res <- new_neurothresh_result(
+    method = "octree_scan_stepdown",
+    stat_vol = stat_vol, mask = mask,
+    threshold = NA_real_,
+    reject = reject,
+    pvals = array(NA_real_, dim = dims),
+    clusters = selected,
     params = list(
-      alpha = alpha,
-      n_perm = n_perm,
-      null = null,
-      fwhm_vox = fwhm_vox,
-      fwhm_mm = fwhm_mm,
-      gamma = gamma,
-      min_voxels = min_voxels,
-      min_alpha = min_alpha,
-      report = report,
-      two_sided = two_sided
-    )
+      alpha = alpha, tail = tail,
+      n_perm = n_perm, null = null,
+      fwhm_vox = fwhm_vox, fwhm_mm = fwhm_mm,
+      gamma = gamma, min_voxels = min_voxels,
+      min_alpha = min_alpha, report = report
+    ),
+    call = call_capture,
+    extras = list(hits = hits)
   )
+  res$hits <- hits
+  res$selected <- selected
+  res$sig_mask <- sig_mask
+  res$sig_indices <- sig_idx_vol
+  res
 }
 
 #' @keywords internal
 .octree_descend_u0_stepdown <- function(idx_parent, bbox, alpha_budget,
                                         z_vec, pi_vec, x, y, z,
                                         perm_fun, n_perm,
+                                        do_abs,
                                         gamma, min_alpha, min_voxels,
                                         parent_id, depth, next_id) {
   hits <- list()
@@ -241,7 +288,7 @@ octree_scan_stepdown <- function(z_vol,
     z_vec, idx_parent, split$w_parent, split$child_id,
     split$log_den1, split$inv_sqrt_den2,
     kappa_grid_pos = numeric(0),
-    do_abs = FALSE
+    do_abs = do_abs
   )
 
   t_null <- matrix(NA_real_, nrow = n_perm, ncol = split$m)
@@ -251,7 +298,7 @@ octree_scan_stepdown <- function(z_vol,
       z_perm, idx_parent, split$w_parent, split$child_id,
       split$log_den1, split$inv_sqrt_den2,
       kappa_grid_pos = numeric(0),
-      do_abs = FALSE
+      do_abs = do_abs
     )
   }
 
@@ -306,6 +353,7 @@ octree_scan_stepdown <- function(z_vol,
       x = x, y = y, z = z,
       perm_fun = perm_fun,
       n_perm = n_perm,
+      do_abs = do_abs,
       gamma = gamma,
       min_alpha = min_alpha,
       min_voxels = min_voxels,
@@ -313,7 +361,7 @@ octree_scan_stepdown <- function(z_vol,
       depth = depth + 1L,
       next_id = next_id
     )
-    hits <- c(hits, child_hits)
+    hits <- .append_list(hits, child_hits)
   }
 
   hits

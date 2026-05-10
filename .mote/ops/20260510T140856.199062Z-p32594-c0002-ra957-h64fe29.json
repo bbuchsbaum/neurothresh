@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR938JJRCYXBCNXKTHG3PMJ4","kind":"note","note_kind":"progress","op":"20260510T140856.199062Z-p32594-c0002-ra957-h64fe29","text":"starting Phase 1b: generalize as_image_matrix() into as_subject_matrix() with NeuroVec/SparseNeuroVec/list<NeuroVol> branches","ts":"2026-05-10T14:08:56.199062Z","v":1}

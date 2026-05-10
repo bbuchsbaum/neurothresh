@@ -166,3 +166,41 @@ fwer_p_from_maxnull <- function(observed, max_null) {
     (1 + sum(max_null >= t)) / (B + 1)
   }, numeric(1))
 }
+
+#' Compute discrete permutation cutoff from max null distribution
+#'
+#' Returns a cutoff `u` such that the standard plus-one corrected
+#' permutation rule rejects for `observed > u` at level `alpha`.
+#'
+#' @param max_null Numeric vector of max statistics under null
+#' @param alpha Significance level in (0, 1)
+#'
+#' @return Numeric scalar cutoff
+#'
+#' @keywords internal
+fwer_threshold_from_maxnull <- function(max_null, alpha) {
+  if (!is.numeric(max_null) || length(max_null) == 0L) {
+    stop("max_null must be a non-empty numeric vector")
+  }
+  if (!is.numeric(alpha) || length(alpha) != 1L || !is.finite(alpha) ||
+      alpha <= 0 || alpha >= 1) {
+    stop("alpha must be a finite scalar in (0, 1)")
+  }
+
+  max_null <- max_null[is.finite(max_null)]
+  B <- length(max_null)
+  if (B == 0L) {
+    stop("max_null has no finite values")
+  }
+
+  # With plus-one p-values p=(1+r)/(B+1), reject when r <= floor(alpha*(B+1))-1.
+  # This is equivalent to observed > k-th largest null max with:
+  #   k = floor(alpha * (B + 1)).
+  k <- as.integer(floor(alpha * (B + 1)))
+  if (k < 1L) {
+    return(Inf)
+  }
+
+  max_null_sorted <- sort(max_null, decreasing = TRUE)
+  max_null_sorted[min(k, B)]
+}

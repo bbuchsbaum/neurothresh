@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGD3KA4CPA0AG8D5BBA6","kind":"note","note_kind":"note","op":"20260510T151200.389483Z-p62339-c0000-r8827-h71590b","text":"Implemented lisa(null_spec) returning neurothresh_result with filtered_stat/FDR diagnostics, q-map/reject volumes, tail handling, range scaling, and focused result tests.","ts":"2026-05-10T15:12:00.389483Z","v":1}

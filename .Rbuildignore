@@ -9,6 +9,7 @@
 ^tasks$
 ^specs$
 ^PROMPT\.md$
+^AGENTS\.md$
 ^@.*\.md$
 ^lib_notes\.md$
 ^\.claude$
@@ -32,3 +33,13 @@
 ^Meta$
 ^_pkgdown\.yml$
 ^pkgdown$
+^\.omc$
+^\.mote$
+^\.rcmdcheck_result\.rds$
+^\.rcheck_post\.rds$
+^\.covr_result\.rds$
+^graphify-out$
+^src/.*\.o$
+^src/.*\.so$
+^src/.*\.dll$
+^src/.*\.dylib$

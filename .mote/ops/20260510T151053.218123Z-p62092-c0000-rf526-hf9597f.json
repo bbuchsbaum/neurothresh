@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGAZ9J60V23FHDAQ0E4Q","kind":"note","note_kind":"note","op":"20260510T151053.218123Z-p62092-c0000-rf526-hf9597f","text":"Implemented lisa_fdr_map() with pos/neg/two scoring, conservative empirical FDR, monotone q-values, thresholds, and focused tests.","ts":"2026-05-10T15:10:53.218123Z","v":1}

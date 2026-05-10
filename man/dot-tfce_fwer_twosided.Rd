@@ -2,11 +2,22 @@
 % Please edit documentation in R/tfce.R
 \name{.tfce_fwer_twosided}
 \alias{.tfce_fwer_twosided}
-\title{Two-sided TFCE with combined max null}
+\title{Two-sided TFCE FWER}
 \usage{
-.tfce_fwer_twosided(stat_vol, mask, n_perm, H, E, dh, alpha, seed)
+.tfce_fwer_twosided(
+  stat_vol,
+  mask,
+  n_perm,
+  H,
+  E,
+  dh,
+  alpha,
+  draw_fun,
+  null_kind,
+  call_capture
+)
 }
 \description{
-Two-sided TFCE with combined max null
+Two-sided TFCE FWER
 }
 \keyword{internal}

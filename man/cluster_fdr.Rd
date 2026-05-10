@@ -7,70 +7,69 @@
 cluster_fdr(
   stat_vol,
   mask = NULL,
-  cluster_thresh = 3,
   q = 0.05,
-  p_method = c("rft", "perm"),
-  fwhm_mm = NULL,
-  n_perm = 5000,
   tail = c("pos", "neg", "two"),
-  two_sided_policy = c("BH_all", "split_q"),
-  seed = NULL
+  cluster_thresh = 3,
+  p_method = c("rft", "perm"),
+  smoothness = NULL,
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
+  fwhm_mm = NULL,
+  null_fun = NULL,
+  allow_voxel_signflip = FALSE,
+  two_sided_policy = c("BH_all", "split_q")
 )
 }
 \arguments{
-\item{stat_vol}{NeuroVol containing statistic map}
+\item{stat_vol}{3D Z-equivalent statistic map (array or \code{NeuroVol}).}
 
-\item{mask}{Optional LogicalNeuroVol for analysis domain}
+\item{mask}{Optional logical 3D mask. Defaults to finite voxels in
+\code{stat_vol}.}
 
-\item{cluster_thresh}{Cluster-forming threshold (Z-score)}
+\item{q}{FDR level (default 0.05).}
 
-\item{q}{FDR level (default 0.05)}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, both tails are
+pooled into a single BH ordering.}
 
-\item{p_method}{Method for computing cluster p-values:
-"rft" (Random Field Theory) or "perm" (permutation)}
+\item{cluster_thresh}{Cluster-forming threshold (Z-score).}
 
-\item{fwhm_mm}{Smoothness in mm (required for p_method = "rft")}
+\item{p_method}{Method for computing cluster p-values: \code{"rft"} (Random
+Field Theory) or \code{"perm"} (permutation).}
 
-\item{n_perm}{Number of permutations (for p_method = "perm")}
+\item{smoothness}{A \code{\link[=smoothness_fwhm]{smoothness_fwhm()}} (or numeric mm) — required when
+\code{p_method = "rft"}. Ignored otherwise.}
 
-\item{tail}{"pos", "neg", or "two"}
+\item{null_spec}{A \code{\link{null_spec}} supplying null draws — required when
+\code{p_method = "perm"}.}
 
-\item{two_sided_policy}{For two-sided: "BH_all" (pool both tails) or
-"split_q" (q/2 per tail)}
+\item{n_perm}{Number of permutations to consume from \code{null_spec}. Defaults
+to \code{null_spec$n_perm}.}
 
-\item{seed}{Random seed for permutation}
+\item{seed}{Optional random seed.}
+
+\item{fwhm_mm}{Deprecated alias for \code{smoothness}.}
+
+\item{null_fun}{Deprecated bare-function null source; prefer \code{null_spec}.}
+
+\item{allow_voxel_signflip}{Deprecated; if \code{TRUE} and \code{null_spec}/\code{null_fun}
+are missing, falls back to independent voxel sign-flips.}
+
+\item{two_sided_policy}{Deprecated. The \code{"two"} tail now uses BH on the
+pooled set of clusters (the previous \code{"BH_all"} behaviour). Pass
+\code{"split_q"} only if you need the legacy q/2 split per tail.}
 }
 \value{
-List with components:
-\describe{
-\item{sig_mask}{Logical mask of FDR-significant clusters}
-\item{table}{Data frame with cluster statistics}
-\item{n_clusters}{Number of significant clusters}
-}
+A \code{\link{neurothresh_result}} with \code{method = "cluster_fdr"} and the
+cluster table in \verb{$clusters}. \verb{$threshold} is \code{cluster_thresh}.
 }
 \description{
 Controls the False Discovery Rate at the cluster level by applying
 the Benjamini-Hochberg procedure to cluster-extent p-values.
 }
-\details{
-This implements "topological FDR" as advocated by Chumbley & Friston,
-where FDR is controlled over the finite set of clusters rather than
-over all voxels.
-}
-\examples{
-\dontrun{
-# RFT-based cluster FDR
-result <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05,
-                      p_method = "rft", fwhm_mm = 8)
-
-# Permutation-based cluster FDR
-result <- cluster_fdr(z_map, cluster_thresh = 3.0, q = 0.05,
-                      p_method = "perm", n_perm = 5000)
-}
-
-}
 \references{
-Chumbley, J. R., & Friston, K. J. (2009). False discovery rate
-revisited: FDR and topological inference using Gaussian random fields.
-NeuroImage, 44(1), 62-70.
+Chumbley & Friston (2009), NeuroImage 44(1), 62-70.
+}
+\seealso{
+\code{\link[=rft_cluster_fwer]{rft_cluster_fwer()}}, \code{\link[=tfce_fwer]{tfce_fwer()}}, \code{\link[=hier_scan]{hier_scan()}}.
 }

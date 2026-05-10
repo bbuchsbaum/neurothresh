@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZK3D217KVXG3VW83KBP7C","kind":"note","note_kind":"note","op":"20260510T134237.099063Z-p28087-c0000-re234-h9a500d","text":"Implemented as_image_matrix() contract, mask/coords/template metadata, validation, and tests.","ts":"2026-05-10T13:42:37.099063Z","v":1}

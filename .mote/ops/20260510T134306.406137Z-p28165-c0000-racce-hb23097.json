@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZM4VQ8E9P31VKABC31R4Y","kind":"note","note_kind":"note","op":"20260510T134306.406137Z-p28165-c0000-racce-hb23097","text":"Implemented low-level scale_space_energy(stat_vol + null_fun) scanner with max-null FWER over scale, location, and channel.","ts":"2026-05-10T13:43:06.406137Z","v":1}

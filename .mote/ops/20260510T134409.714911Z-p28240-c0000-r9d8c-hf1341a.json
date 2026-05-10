@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZNVQAJ2PSDWX3DTV9SRYE","kind":"reserve_open","mode":"exclusive","op":"20260510T134409.714911Z-p28240-c0000-r9d8c-hf1341a","paths":["R/scale_space.R","tests/testthat/test-scale-space-energy.R","NAMESPACE"],"reservation_id":"rv-01KR9233QJ3Q4JJ5Z7WHCYE3V4","ts":"2026-05-10T13:44:09.714911Z","ttl_s":3600,"v":1}

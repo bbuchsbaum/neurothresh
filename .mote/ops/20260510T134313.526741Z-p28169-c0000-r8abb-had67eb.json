@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZM9M4N9QK6N9CVQBHJ8Y3","kind":"note","note_kind":"note","op":"20260510T134313.526741Z-p28169-c0000-r8abb-had67eb","text":"Implemented two-pass null mean/sd studentization and above-null energy metadata; tested stored behavior through scanner outputs.","ts":"2026-05-10T13:43:13.526741Z","v":1}

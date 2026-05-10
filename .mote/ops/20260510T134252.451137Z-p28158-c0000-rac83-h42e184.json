@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZKMP1XD0Q98A56RH1TN8N","kind":"note","note_kind":"note","op":"20260510T134252.451137Z-p28158-c0000-rac83-h42e184","text":"Implemented scale_space() with identity and global endpoints, FWHM/sigma metadata, validation, and tests.","ts":"2026-05-10T13:42:52.451137Z","v":1}

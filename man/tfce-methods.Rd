@@ -4,6 +4,5 @@
 \alias{tfce-methods}
 \title{Threshold-Free Cluster Enhancement (TFCE)}
 \description{
-Implementation of FSL-style TFCE for threshold-free cluster
-enhancement with permutation-based FWER control.
+Implementation of FSL-style TFCE with permutation-based FWER control.
 }

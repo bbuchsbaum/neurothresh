@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZN0VKW3X8NHB1NDT58PGH","kind":"note","note_kind":"note","op":"20260510T134333.594872Z-p28193-c0000-r620f-h6464ce","text":"Implemented scale_space_twosample() thin wrapper using deterministic fixed-size label permutations and Welch default.","ts":"2026-05-10T13:43:33.594872Z","v":1}

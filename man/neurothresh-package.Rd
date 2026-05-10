@@ -28,6 +28,8 @@ Matched-Filter Thresholding (LR-MFT) with hierarchical stepdown inference.
 \item{\code{\link{tfce_transform}}}{TFCE transformation}
 \item{\code{\link{tfce_fwer}}}{TFCE with permutation FWER}
 \item{\code{\link{cluster_fdr}}}{Topological cluster-FDR}
+\item{\code{\link{scale_space_energy}}}{Scale-space localized energy inference}
+\item{\code{\link{lisa}}}{Local adaptive post-statistic FDR inference}
 }
 }
 

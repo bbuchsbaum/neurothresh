@@ -27,7 +27,13 @@ run_once <- function(z, dims, fwhm_mm = 6, alpha = 0.05, n_perm = 200, seed = 1)
   out$octree_stepdown <- list(rej = nrow(res_sd$selected) > 0, time = proc.time()[3] - t0)
 
   t0 <- proc.time()[3]
-  res_tf <- neurothresh::tfce_fwer(z, n_perm = n_perm, alpha = alpha, tail = "pos")
+  res_tf <- neurothresh::tfce_fwer(
+    z,
+    n_perm = n_perm,
+    alpha = alpha,
+    allow_voxel_signflip = TRUE,
+    tail = "pos"
+  )
   out$tfce <- list(rej = any(res_tf$sig_mask), time = proc.time()[3] - t0)
 
   t0 <- proc.time()[3]
@@ -85,4 +91,3 @@ benchmark_suite <- function(n_sims = 20,
 
   do.call(rbind, rows)
 }
-

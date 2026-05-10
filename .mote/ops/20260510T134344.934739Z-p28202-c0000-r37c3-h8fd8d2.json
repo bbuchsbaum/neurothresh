@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZNCZD1Y3H58QH3AT0W1TE","kind":"note","note_kind":"note","op":"20260510T134344.934739Z-p28202-c0000-r37c3-h8fd8d2","text":"Implemented permutation_glm() and make_null_fun_glm() with Freedman-Lane residual permutations, formulas/design matrices, named/numeric contrasts, and deterministic tests.","ts":"2026-05-10T13:43:44.934739Z","v":1}

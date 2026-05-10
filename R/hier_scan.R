@@ -3,16 +3,20 @@
 #' Main entry point for hierarchical likelihood-ratio matched-filter
 #' thresholding with stepdown inference.
 #'
-#' @param z_vol A NeuroVol object containing Z-scores (or other stat type)
+#' @param stat_vol A NeuroVol object containing Z-scores (or other stat type)
 #' @param prior_vol Optional NeuroVol of prior weights. If NULL, uniform
 #'   priors are used.
 #' @param parcels Optional ClusteredNeuroVol from neuroatlas for parcel-based
 #'   initialization. If NULL, starts from whole brain with octree descent.
 #' @param mask Optional LogicalNeuroVol defining analysis domain. If NULL,
-#'   uses all finite voxels in z_vol.
+#'   uses all finite voxels in \code{stat_vol}.
 #' @param alpha Significance level for FWER control (default 0.05)
+#' @param tail One of \code{"pos"}, \code{"neg"}, or \code{"two"}.
 #' @param kappa Temperature parameter(s) for soft-max. Can be a single value
 #'   or vector of values to search over.
+#' @param prior_eta Mixing weight for prior smoothing with uniform mass.
+#'   Values in \[0, 1\], where 0 is uniform and 1 is the raw prior.
+#' @param null_spec Reserved null specification argument for API consistency.
 #' @param n_perm Number of permutations for null distribution (default 1000)
 #' @param method Inference method: "stepdown" (Westfall-Young) or
 #'   "hierarchical" (alpha-spending only)
@@ -22,11 +26,8 @@
 #' @param min_voxels Minimum region size for octree descent
 #' @param min_alpha Minimum alpha to continue hierarchical testing
 #' @param seed Random seed for reproducibility
-#' @param stat_type Input statistic type: "Z", "t", or "neglog10p"
-#' @param df Degrees of freedom (required if stat_type = "t")
-#' @param two_sided Logical, whether to perform two-sided inference
-#' @param prior_eta Mixing weight for prior smoothing with uniform mass.
-#'   Values in \[0, 1\], where 0 is uniform and 1 is the raw prior.
+#' @param two_sided Deprecated logical shortcut. If TRUE and \code{tail = "pos"},
+#'   uses \code{tail = "two"}.
 #' @param parallel Logical, whether to parallelize permutation loops using
 #'   future.apply (optional).
 #' @param n_workers Optional integer number of workers for future plan.
@@ -69,13 +70,22 @@
 #' plot(result, z_map)
 #' }
 #'
+#' @seealso
+#' \code{\link{octree_scan_fwer}} for a global maxT scan;
+#' \code{\link{octree_scan_stepdown}} for octree step-down;
+#' \code{\link{tfce_fwer}} and \code{\link{rft_peak_fwer}} for alternative
+#' thresholding approaches.
+#'
 #' @export
-hier_scan <- function(z_vol,
+hier_scan <- function(stat_vol,
                       prior_vol = NULL,
                       parcels = NULL,
                       mask = NULL,
                       alpha = 0.05,
+                      tail = c("pos", "neg", "two"),
                       kappa = c(0.5, 1.0, 2.0),
+                      prior_eta = 0.9,
+                      null_spec = NULL,
                       n_perm = 1000,
                       method = c("stepdown", "hierarchical"),
                       gamma = 0.5,
@@ -83,44 +93,66 @@ hier_scan <- function(z_vol,
                       min_voxels = 8,
                       min_alpha = 1e-6,
                       seed = NULL,
-                      stat_type = "Z",
-                      df = NULL,
-                      two_sided = FALSE,
-                      prior_eta = 0.9,
+                      two_sided = NULL,
                       parallel = FALSE,
                       n_workers = NULL) {
 
   method <- match.arg(method)
+  tail <- match.arg(tail)
+  call_capture <- match.call()
+
+  if (!is.null(two_sided) && isTRUE(two_sided) && tail == "pos") tail <- "two"
+  z_vol <- stat_vol
 
   if (!is.null(seed)) set.seed(seed)
 
   parallel <- isTRUE(parallel)
   use_future <- FALSE
+  future_packages <- NULL
   if (parallel) {
-    if (requireNamespace("future.apply", quietly = TRUE)) {
+    if (suppressWarnings(requireNamespace("future.apply", quietly = TRUE))) {
       use_future <- TRUE
     } else {
       warning("parallel=TRUE requested but future.apply is not installed; running serial.")
     }
   }
   if (use_future) {
-    if (requireNamespace("future", quietly = TRUE)) {
+    if (suppressWarnings(requireNamespace("future", quietly = TRUE))) {
       old_plan <- future::plan()
       on.exit(future::plan(old_plan), add = TRUE)
       workers <- if (is.null(n_workers)) future::availableCores() else n_workers
-      future::plan(future::multisession, workers = workers)
+
+      # If the package is not installed (e.g., devtools::load_all), multisession
+      # workers won't have access to the namespace/DLL. Prefer multicore/fork
+      # when supported so workers inherit the current R session.
+      ns_path <- tryCatch(getNamespaceInfo("neurothresh", "path"),
+                          error = function(e) "")
+      is_dev <- nzchar(ns_path) && dir.exists(file.path(ns_path, ".git"))
+      pkg_available_in_workers <- !is_dev
+
+      if (pkg_available_in_workers) {
+        future_packages <- "neurothresh"
+      } else {
+        future_packages <- character(0)
+      }
+
+      if (inherits(old_plan, "sequential")) {
+        if (!pkg_available_in_workers && future::supportsMulticore()) {
+          future::plan(future::multicore, workers = workers)
+        } else if (!pkg_available_in_workers && !future::supportsMulticore()) {
+          warning("parallel=TRUE requested but multicore is not supported and the package is not installed; running serial.")
+          use_future <- FALSE
+        } else {
+          future::plan(future::multisession, workers = workers)
+        }
+      }
     } else if (!is.null(n_workers)) {
       warning("n_workers ignored because future is not installed.")
     }
   }
 
-  # --- (A) Canonicalize input ---
-  if (stat_type != "Z") {
-    canon <- canonicalize_stat(z_vol, stat_type = stat_type, df = df,
-                               tail = if (two_sided) "two" else "pos")
-    z_vol <- canon$Zeq
-  }
-
+  # --- (A) Caller is expected to pass an already-canonicalized Z-equivalent
+  #     map; use canonicalize() up front for t-statistics or -log10(p) inputs.
   # --- (B) Set up mask ---
   if (is.null(mask)) {
     mask <- is.finite(as.numeric(z_vol))
@@ -136,8 +168,10 @@ hier_scan <- function(z_vol,
 
   # --- (C) Extract mask-space vectors ---
   z_vec <- as.numeric(z_vol)[mask_idx]
-  if (two_sided) {
+  if (tail == "two") {
     z_vec <- abs(z_vec)
+  } else if (tail == "neg") {
+    z_vec <- -z_vec
   }
 
   # Prior weights
@@ -177,7 +211,8 @@ hier_scan <- function(z_vol,
         z_vec[valid_labels], pi_vec[valid_labels], lab_vec[valid_labels],
         n_perm = n_perm, kappa_grid = kappa,
         alpha = gamma_root * alpha, seed = seed,
-        parallel = use_future
+        parallel = use_future,
+        future_packages = future_packages
       )
 
       # Descend into significant parcels
@@ -203,10 +238,11 @@ hier_scan <- function(z_vol,
               z_vec, pi_vec, x, y, z_coord,
               perm_fun, n_perm, kappa,
               gamma, min_alpha, min_voxels,
-              parallel = use_future
+              parallel = use_future,
+              future_packages = future_packages
             )
 
-            significant_regions <- c(significant_regions, hits)
+            significant_regions <- .append_list(significant_regions, hits)
           }
         }
       }
@@ -231,10 +267,11 @@ hier_scan <- function(z_vol,
           z_vec, pi_vec, x, y, z_coord,
           perm_fun, n_perm, kappa,
           gamma = gamma_use, min_alpha, min_voxels,
-          parallel = use_future
+          parallel = use_future,
+          future_packages = future_packages
         )
 
-        significant_regions <- c(significant_regions, hits)
+        significant_regions <- .append_list(significant_regions, hits)
       }
     }
   } else {
@@ -249,7 +286,8 @@ hier_scan <- function(z_vol,
         z_vec, pi_vec, x, y, z_coord,
         perm_fun, n_perm, kappa,
         gamma, min_alpha, min_voxels,
-        parallel = use_future
+        parallel = use_future,
+        future_packages = future_packages
       )
     } else {
       significant_regions <- hier_descend_alpha(
@@ -258,7 +296,8 @@ hier_scan <- function(z_vol,
         z_vec, pi_vec, x, y, z_coord,
         perm_fun, n_perm, kappa,
         gamma = gamma_root, min_alpha, min_voxels,
-        parallel = use_future
+        parallel = use_future,
+        future_packages = future_packages
       )
     }
   }
@@ -281,6 +320,7 @@ hier_scan <- function(z_vol,
       gamma = gamma,
       gamma_root = gamma_root,
       min_voxels = min_voxels,
+      tail = tail,
       two_sided = two_sided,
       parallel = parallel,
       n_workers = n_workers
@@ -319,74 +359,4 @@ hier_scan <- function(z_vol,
   j <- ((idx0 %/% dims[1]) %% dims[2]) + 1
   k <- (idx0 %/% (dims[1] * dims[2])) + 1
   cbind(i, j, k)
-}
-
-#' Print method for neurothresh_result
-#'
-#' @param x A neurothresh_result object
-#' @param ... Additional arguments (ignored)
-#'
-#' @export
-print.neurothresh_result <- function(x, ...) {
-  cat("neurothresh hierarchical analysis result\n")
-  cat("----------------------------------------\n")
-  cat("Method:", x$method, "\n")
-  cat("Alpha:", x$params$alpha, "\n")
-  cat("Permutations:", x$params$n_perm, "\n")
-  cat("Kappa values:", paste(x$params$kappa, collapse = ", "), "\n")
-  cat("Significant regions:", x$n_significant, "\n")
-  if (!is.null(x$parcel_results)) {
-    cat("Significant parcels:",
-        length(x$parcel_results$sig_parcels), "\n")
-  }
-  invisible(x)
-}
-
-#' Summary method for neurothresh_result
-#'
-#' @param object A neurothresh_result object
-#' @param ... Additional arguments (ignored)
-#'
-#' @export
-summary.neurothresh_result <- function(object, ...) {
-  cat("neurothresh Hierarchical Analysis Summary\n")
-  cat("=========================================\n\n")
-
-  cat("Parameters:\n")
-  cat("  FWER alpha:", object$params$alpha, "\n")
-  cat("  Permutations:", object$params$n_perm, "\n")
-  cat("  Kappa grid:", paste(object$params$kappa, collapse = ", "), "\n")
-  cat("  Method:", object$method, "\n")
-  cat("  Two-sided:", object$params$two_sided, "\n")
-  cat("\n")
-
-  cat("Results:\n")
-  cat("  Significant regions:", object$n_significant, "\n")
-
-  if (!is.null(object$parcel_results)) {
-    cat("  Significant parcels:",
-        length(object$parcel_results$sig_parcels), "\n")
-    if (length(object$parcel_results$sig_parcels) > 0) {
-      cat("  Parcel IDs:", paste(object$parcel_results$sig_parcels,
-                                 collapse = ", "), "\n")
-    }
-  }
-
-  if (object$n_significant > 0) {
-    cat("\n")
-    cat("Top regions by score:\n")
-    scores <- sapply(object$significant_regions, function(r) r$score)
-    p_adj <- sapply(object$significant_regions, function(r) r$p_adj)
-    sizes <- sapply(object$significant_regions, function(r) length(r$indices))
-    ord <- order(scores, decreasing = TRUE)
-
-    n_show <- min(10, length(ord))
-    for (i in seq_len(n_show)) {
-      idx <- ord[i]
-      cat(sprintf("  %2d. Score=%.3f, p_adj=%.4f, size=%d voxels\n",
-                  i, scores[idx], p_adj[idx], sizes[idx]))
-    }
-  }
-
-  invisible(object)
 }

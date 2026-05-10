@@ -18,6 +18,7 @@ RoxygenNote: 7.3.3
 Depends:
     R (>= 4.0.0)
 Imports:
+    Matrix,
     Rcpp (>= 1.0.0),
     neuroim2 (>= 0.8.0),
     methods,
@@ -31,9 +32,6 @@ Suggests:
     future.apply
 LinkingTo:
     Rcpp
-Remotes:
-    bbuchsbaum/neuroim2,
-    bbuchsbaum/neuroatlas
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 URL: https://github.com/bbuchsbaum/neurothresh, https://bbuchsbaum.github.io/neurothresh/

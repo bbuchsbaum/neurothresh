@@ -10,45 +10,38 @@ tfce_transform(
   H = 2,
   E = 0.5,
   dh = 0.1,
-  tail = c("pos", "neg")
+  tail = c("pos", "neg", "two")
 )
 }
 \arguments{
-\item{stat_vol}{NeuroVol containing statistic map}
+\item{stat_vol}{3D Z-equivalent statistic map (array or \code{NeuroVol}).}
 
-\item{mask}{Optional LogicalNeuroVol for analysis domain}
+\item{mask}{Optional logical 3D mask. Defaults to finite voxels in
+\code{stat_vol}.}
 
-\item{H}{Height exponent (default 2.0)}
+\item{H}{Height exponent (default 2.0).}
 
-\item{E}{Extent exponent (default 0.5)}
+\item{E}{Extent exponent (default 0.5).}
 
-\item{dh}{Threshold increment (default 0.1)}
+\item{dh}{Threshold increment (default 0.1).}
 
-\item{tail}{"pos" for activations, "neg" for deactivations}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"} the result is
+the per-voxel maximum of the positive- and negative-tail TFCE maps.}
 }
 \value{
-NeuroVol with TFCE-transformed values
+Volume (same type as \code{stat_vol}) with TFCE-transformed values.
 }
 \description{
 Computes the Threshold-Free Cluster Enhancement transform:
 \deqn{TFCE(v) = \int_0^{h_v} e(h)^E \cdot h^H \, dh}
 }
 \details{
-where e(h) is the extent of the cluster containing voxel v
-at threshold h.
-
-TFCE provides threshold-free inference by integrating cluster
-extent over a range of thresholds. Default parameters (H=2, E=0.5)
-are those recommended by Smith & Nichols (2009).
-}
-\examples{
-\dontrun{
-tfce_map <- tfce_transform(z_map, H = 2, E = 0.5)
-}
-
+where \eqn{e(h)} is the extent of the cluster containing voxel \eqn{v}
+at threshold \eqn{h}.
 }
 \references{
-Smith, S. M., & Nichols, T. E. (2009). Threshold-free cluster
-enhancement: Addressing problems of smoothing, threshold dependence
-and localisation in cluster inference. NeuroImage, 44(1), 83-98.
+Smith & Nichols (2009), NeuroImage 44(1), 83-98.
+}
+\seealso{
+\code{\link[=tfce_fwer]{tfce_fwer()}}.
 }

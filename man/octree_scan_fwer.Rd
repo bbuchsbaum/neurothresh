@@ -5,33 +5,46 @@
 \title{Octree Max-Scan with permutation FWER (U0-only)}
 \usage{
 octree_scan_fwer(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   mask = NULL,
   alpha = 0.05,
-  n_perm = 1000,
+  tail = c("pos", "neg", "two"),
+  prior_eta = 0.9,
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
   null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
   null_fun = NULL,
   fwhm_vox = NULL,
   fwhm_mm = NULL,
   acf_params = NULL,
-  seed = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9
+  two_sided = NULL
 )
 }
 \arguments{
-\item{z_vol}{A 3D volume-like object with finite values in-brain.}
+\item{stat_vol}{A 3D volume-like object with finite values in-brain.}
 
-\item{prior_vol}{Optional prior weight volume aligned to \code{z_vol}.
+\item{prior_vol}{Optional prior weight volume aligned to \code{stat_vol}.
 If NULL, uniform weights are used.}
 
-\item{mask}{Optional logical mask (same shape as \code{z_vol}). If NULL,
-uses all finite voxels in \code{z_vol}.}
+\item{mask}{Optional logical mask (same shape as \code{stat_vol}). If NULL,
+uses all finite voxels in \code{stat_vol}.}
 
 \item{alpha}{Significance level for strong FWER control (default 0.05).}
 
-\item{n_perm}{Number of permutations/sign-flips (default 1000).}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, or \code{"two"}.}
+
+\item{prior_eta}{Mixing weight in [0, 1] to shrink the prior toward uniform
+mass (default 0.9).}
+
+\item{null_spec}{Optional \code{\link{null_spec}} supplying deterministic null draws.
+If supplied and \code{null_fun} is NULL, its \code{draw} function is used.}
+
+\item{n_perm}{Number of permutations/sign-flips. Defaults to
+\code{null_spec$n_perm} when \code{null_spec} is supplied, otherwise 1000.}
+
+\item{seed}{Optional RNG seed for reproducibility.}
 
 \item{null}{Null calibration method.
 \describe{
@@ -65,12 +78,7 @@ available.}
 \item{lambda_vox}{Exponential kernel scale in voxel units (length 1 or 3).}
 }}
 
-\item{seed}{Optional RNG seed for reproducibility.}
-
-\item{two_sided}{Logical; if TRUE, uses \code{abs(z_vol)} prior to sign-flips.}
-
-\item{prior_eta}{Mixing weight in [0, 1] to shrink the prior toward uniform
-mass (default 0.9).}
+\item{two_sided}{Logical; if TRUE, uses \code{abs(stat_vol)} prior to sign-flips.}
 }
 \value{
 A list with components:
@@ -118,4 +126,9 @@ subj <- replicate(8, array(rnorm(16 * 16 * 16), dim = c(16, 16, 16)), simplify =
 sf <- make_null_fun_subject_signflip(subj)
 res3 <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 50, null_fun = sf$null_fun)
 
+}
+\seealso{
+\code{\link{octree_scan_stepdown}} for hierarchical step-down;
+\code{\link{hier_scan}} for LR-MFT hierarchical inference;
+\code{\link{tfce_fwer}} and \code{\link{rft_peak_fwer}} for alternative methods.
 }

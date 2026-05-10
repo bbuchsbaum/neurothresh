@@ -135,6 +135,27 @@ estimate_fwhm_vox <- function(z_vol,
 }
 
 #' @keywords internal
+.coerce_null_draw <- function(draw, n_full, mask_idx) {
+  z <- as.numeric(draw)
+  n_mask <- length(mask_idx)
+
+  if (length(z) == n_full) {
+    out <- z
+  } else if (length(z) == n_mask) {
+    out <- numeric(n_full)
+    out[mask_idx] <- z
+  } else {
+    stop("null_fun(b) must return a numeric vector of length n_mask or full volume length")
+  }
+
+  if (any(!is.finite(out[mask_idx]))) {
+    stop("null_fun(b) returned non-finite values in mask voxels")
+  }
+
+  out
+}
+
+#' @keywords internal
 make_null_fun_mc_fwhm <- function(x0, y0, z0, mask_full_idx0, side, fwhm_vox) {
   fwhm_vox <- .prep_fwhm_vox(fwhm_vox)
   # Interpret fwhm_vox as the target ACF (field) smoothness; smoothing white noise

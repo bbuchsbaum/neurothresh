@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZMW9X5YBPF61FX5DMEDR5","kind":"note","note_kind":"note","op":"20260510T134329.972909Z-p28188-c0000-rdb10-h2fb4a6","text":"Implemented scale_space_onesample() thin raw-image wrapper; tested against manual low-level call.","ts":"2026-05-10T13:43:29.972909Z","v":1}

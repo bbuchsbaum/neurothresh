@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZKZ2PQW57B482CWTD412V","kind":"note","note_kind":"note","op":"20260510T134300.845165Z-p28162-c0000-r8ec1-habb201","text":"Implemented channel objects for local_energy() and signed_coherence(); tail is channel-specific and tested.","ts":"2026-05-10T13:43:00.845165Z","v":1}

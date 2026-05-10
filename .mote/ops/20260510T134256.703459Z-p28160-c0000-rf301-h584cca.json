@@ -1,0 +1,1 @@
+{"actor":"codex-docs","entity":"bd-01KR8ZKT57S9AVKD0107HB3VNH","kind":"note","note_kind":"note","op":"20260510T134256.703459Z-p28160-c0000-rf301-h584cca","text":"Implemented Gaussian grid smoother via existing C++ smoothing with mask normalization and identity support.","ts":"2026-05-10T13:42:56.703459Z","v":1}

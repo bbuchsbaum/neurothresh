@@ -7,48 +7,50 @@
 rft_peak_fwer(
   stat_vol,
   mask = NULL,
-  fwhm_mm,
   alpha = 0.05,
-  df = Inf,
-  tail = c("pos", "neg", "two")
+  tail = c("pos", "neg", "two"),
+  smoothness,
+  df = Inf
 )
 }
 \arguments{
-\item{stat_vol}{NeuroVol containing statistic map}
+\item{stat_vol}{3D Z-equivalent statistic map (array or \code{NeuroVol}).
+Pass already-canonicalized input (use \code{\link[=canonicalize]{canonicalize()}} first for
+t-statistics or -log10(p) maps).}
 
-\item{mask}{Optional LogicalNeuroVol for analysis domain}
+\item{mask}{Optional logical 3D mask. Defaults to finite voxels in
+\code{stat_vol}.}
 
-\item{fwhm_mm}{Smoothness in mm. Scalar or length-3 vector for
-anisotropic smoothness.}
+\item{alpha}{Significance level (default 0.05).}
 
-\item{alpha}{Significance level (default 0.05)}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, the test runs
+both directions at the full \code{alpha} and rejects on the union (matching
+the behaviour of the previous \code{rft_fwer_twosided()} helper).}
 
-\item{df}{Degrees of freedom. Use Inf for Gaussian field (Z-scores).}
+\item{smoothness}{A \code{\link[=smoothness_fwhm]{smoothness_fwhm()}} object specifying field
+smoothness in millimetres. Numeric input is also accepted (length 1 or
+3, mm) and coerced internally.}
 
-\item{tail}{"pos" (activations), "neg" (deactivations), or "two"}
+\item{df}{Degrees of freedom. Use \code{Inf} for Gaussian field (Z-scores).}
 }
 \value{
-List with components:
-\describe{
-\item{threshold}{The FWER-corrected threshold}
-\item{sig_mask}{Logical mask of significant voxels}
-\item{method}{"rft_peak"}
-}
+A \code{\link{neurothresh_result}} with \code{method = "rft_peak_fwer"}. Slots:
+\code{threshold} is the positive-side critical value; \code{reject} is the 3D
+logical rejection volume; \code{pvals} is \code{NA} (RFT does not produce per-voxel
+corrected p-values without further computation).
 }
 \description{
-Computes the FWER-corrected threshold for peak (voxelwise)
-inference using Random Field Theory.
+Computes the FWER-corrected threshold for peak (voxelwise) inference using
+Random Field Theory.
 }
 \details{
 Uses the expected Euler characteristic approximation:
-\deqn{P(\max Z > u) \approx \sum_{d=0}^{D} \text{Resels}_d \cdot EC_d(u)}
+\deqn{P(\max Z > u) \approx \sum_{d=0}^{D} \mathrm{Resels}_d \cdot EC_d(u)}
 
 For high thresholds in smooth Gaussian fields, this provides
 accurate FWER control.
 }
-\examples{
-\dontrun{
-result <- rft_peak_fwer(z_map, fwhm_mm = 8, alpha = 0.05)
-}
-
+\seealso{
+\code{\link[=rft_cluster_fwer]{rft_cluster_fwer()}} for cluster-level inference;
+\code{\link[=tfce_fwer]{tfce_fwer()}} and \code{\link[=cluster_fdr]{cluster_fdr()}} for alternative methods.
 }

@@ -7,41 +7,50 @@
 rft_cluster_fwer(
   stat_vol,
   mask = NULL,
-  fwhm_mm,
-  cluster_thresh = 3,
   alpha = 0.05,
-  df = Inf,
-  tail = c("pos", "neg", "two")
+  tail = c("pos", "neg", "two"),
+  cluster_thresh = 3,
+  smoothness,
+  df = Inf
 )
 }
 \arguments{
-\item{stat_vol}{NeuroVol containing statistic map}
+\item{stat_vol}{3D Z-equivalent statistic map (array or \code{NeuroVol}).
+Pass already-canonicalized input (use \code{\link[=canonicalize]{canonicalize()}} first for
+t-statistics or -log10(p) maps).}
 
-\item{mask}{Optional LogicalNeuroVol for analysis domain}
+\item{mask}{Optional logical 3D mask. Defaults to finite voxels in
+\code{stat_vol}.}
 
-\item{fwhm_mm}{Smoothness in mm}
+\item{alpha}{Significance level (default 0.05).}
 
-\item{cluster_thresh}{Cluster-forming threshold (Z-score)}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, the test runs
+both directions at the full \code{alpha} and rejects on the union (matching
+the behaviour of the previous \code{rft_fwer_twosided()} helper).}
 
-\item{alpha}{Significance level (default 0.05)}
+\item{cluster_thresh}{Cluster-forming threshold on the Z scale.}
 
-\item{df}{Degrees of freedom. Use Inf for Gaussian field.}
+\item{smoothness}{A \code{\link[=smoothness_fwhm]{smoothness_fwhm()}} object specifying field
+smoothness in millimetres. Numeric input is also accepted (length 1 or
+3, mm) and coerced internally.}
 
-\item{tail}{"pos", "neg", or "two"}
+\item{df}{Degrees of freedom. Use \code{Inf} for Gaussian field (Z-scores).}
 }
 \value{
-List with components:
-\describe{
-\item{sig_mask}{Logical mask of significant clusters}
-\item{table}{Data frame with cluster statistics}
-\item{n_clusters}{Number of significant clusters}
-}
+A \code{\link{neurothresh_result}} with \code{method = "rft_cluster_fwer"}. The
+\code{clusters} slot is the per-cluster table (id, size, p_unc, p_fwer,
+significant). \code{threshold} is \code{cluster_thresh}.
 }
 \description{
-Computes cluster-level FWER-corrected p-values using Random Field
-Theory cluster extent distribution.
+Computes cluster-level FWER-corrected p-values using Random Field Theory
+cluster extent distribution.
 }
 \details{
-First thresholds at cluster_thresh to form clusters, then tests
-each cluster's extent against the RFT null distribution.
+First thresholds at \code{cluster_thresh} to form clusters, then
+tests each cluster's extent against the RFT null distribution. For
+\code{tail = "two"}, the analysis runs separately on positive and negative
+tails and the union of significant clusters is reported.
+}
+\seealso{
+\code{\link[=rft_peak_fwer]{rft_peak_fwer()}}, \code{\link[=cluster_fdr]{cluster_fdr()}}.
 }

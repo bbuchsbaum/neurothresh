@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGHMWY46WAQZBVAW99M4","kind":"note","note_kind":"note","op":"20260510T151200.545875Z-p62340-c0000-rc301-h1696a5","text":"Added scale_space_energy(null_spec = ns) compatibility and a test showing the same null_spec feeds LISA and scale-space energy.","ts":"2026-05-10T15:12:00.545875Z","v":1}

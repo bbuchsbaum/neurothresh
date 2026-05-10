@@ -18,7 +18,9 @@ hier_descend_alpha(
   kappa_grid,
   gamma = 0.5,
   min_alpha = 1e-06,
-  min_voxels = 8
+  min_voxels = 8,
+  parallel = FALSE,
+  future_packages = NULL
 )
 }
 \arguments{
@@ -45,6 +47,12 @@ hier_descend_alpha(
 \item{min_alpha}{Minimum alpha to continue testing (default 1e-6)}
 
 \item{min_voxels}{Minimum region size to test (default 8)}
+
+\item{parallel}{Logical; if TRUE, use \code{future.apply} to parallelize the
+permutation loop (internal).}
+
+\item{future_packages}{Character vector of packages to load in future workers
+(internal).}
 }
 \value{
 List of discovered regions with scores and p-values

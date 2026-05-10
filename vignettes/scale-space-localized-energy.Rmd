@@ -1,0 +1,189 @@
+---
+title: "Scale-Space Localized Energy Inference"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Scale-Space Localized Energy Inference}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6.5,
+  fig.height = 4
+)
+```
+
+`scale_space_energy()` tests a planned statistic map across a prespecified
+resolution continuum. The low-level API deliberately follows the rest of
+`neurothresh`: the inferential engine consumes an observed statistic map plus a
+calibrated null generator.
+
+```{r simulate-subject-images}
+library(neurothresh)
+
+set.seed(1)
+dims <- c(12, 12, 12)
+signal_mask <- array(FALSE, dims)
+signal_mask[4:9, 4:9, 4:9] <- TRUE
+subject_images <- replicate(
+  8,
+  {
+    img <- array(rnorm(prod(dims), sd = 0.5), dim = dims)
+    img[signal_mask] <- img[signal_mask] + 3
+    img
+  },
+  simplify = FALSE
+)
+```
+
+For a one-sample planned contrast, the raw-image wrapper builds the group map
+and deterministic subject-level sign-flip null maps, then calls the same
+low-level scanner. The `n_perm` values used below are kept tiny so the
+vignette builds quickly: with `B = 19` permutations the smallest possible
+corrected p-value is `1/(B + 1) = 0.05`, which is far too coarse for real
+analyses. Production runs should use at least `n_perm = 1000`, and 5,000 to
+10,000 if power is a concern.
+
+```{r fit-one-sample-scale-space}
+fit <- scale_space_onesample(
+  subject_images,
+  scales = scale_space(
+    fwhm_mm = c(4, 8, 12),
+    include_global = TRUE,
+    include_identity = TRUE
+  ),
+  statistics = list(
+    local_energy(),
+    signed_coherence(tail = "two")
+  ),
+  n_perm = 19,
+  seed = 1,
+  alpha = 0.1
+)
+
+fit
+head(summary(fit))
+```
+
+```{r one-sample-checks, include = FALSE}
+stopifnot(inherits(fit, "scale_space_energy_result"))
+stopifnot(is.data.frame(summary(fit)))
+stopifnot(is.finite(fit$selected$best$p_fwer[1]))
+stopifnot(fit$selected$best$p_fwer[1] >= 0, fit$selected$best$p_fwer[1] <= 1)
+```
+
+The result controls familywise error over spatial scale, location, and requested
+statistic channels. The global endpoint is a distributed energy test. The
+identity endpoint is the voxelwise limit. Intermediate FWHM values ask whether
+the effect is detectable at that localization scale.
+
+```{r resolution-summary}
+resolution <- plot_resolution_curve(fit)
+resolution[, c("scale_type", "fwhm_mm", "channel", "min_p", "any_supported")]
+```
+
+```{r resolution-curve-plot, echo = FALSE, fig.cap = "Corrected evidence across the localization continuum. Higher values indicate stronger familywise-corrected evidence; the dashed line marks alpha = 0.10."}
+energy_curve <- subset(resolution, channel == "local_energy")
+x <- seq_len(nrow(energy_curve))
+labels <- ifelse(is.infinite(energy_curve$fwhm_mm), "global",
+                 ifelse(energy_curve$fwhm_mm == 0, "identity",
+                        paste0(energy_curve$fwhm_mm, " mm")))
+y <- -log10(energy_curve$min_p)
+op <- par(mar = c(4.8, 4, 1, 1))
+plot(x, y, type = "b", pch = 19, lwd = 2, col = "#2C7FB8",
+     xaxt = "n", xlab = "Resolution scale", ylab = expression(-log[10](p[FWER])),
+     ylim = c(0, max(y, -log10(0.1)) * 1.15))
+axis(1, at = x, labels = labels, las = 2)
+abline(h = -log10(0.1), lty = 2, col = "firebrick")
+par(op)
+```
+
+A corrected point at a scale does not mean each voxel is significant. It means
+that a localized test centered at that location and bandwidth has corrected
+evidence. For local-energy display, use above-null energy summaries rather than
+raw `z^2` maps.
+
+```{r energy-mass-summary}
+mass <- energy_mass_map(fit, scale_index = fit$selected$best$scale_index[1])
+range(as.numeric(mass), na.rm = TRUE)
+```
+
+```{r energy-mass-checks, include = FALSE}
+mass_vec <- as.numeric(mass)
+stopifnot(all(is.finite(mass_vec)))
+stopifnot(all(mass_vec >= 0))
+stopifnot(abs(sum(mass_vec) - 1) < 1e-8 || sum(mass_vec) == 0)
+```
+
+```{r energy-mass-plot, echo = FALSE, fig.cap = "The statistic image contains a broad planted effect. The energy-mass map shows where above-null scale-space energy is concentrated at the selected scale."}
+mean_map <- Reduce("+", subject_images) / length(subject_images)
+slice_at <- 6
+slice_matrix <- function(x, z = slice_at) {
+  matrix(as.numeric(x)[((z - 1) * prod(dims[1:2]) + 1):(z * prod(dims[1:2]))],
+         nrow = dims[1])
+}
+draw_slice <- function(x, main, zlim = NULL, palette = hcl.colors(80, "Viridis")) {
+  if (is.null(zlim)) zlim <- range(x, finite = TRUE, na.rm = TRUE)
+  image(seq_len(nrow(x)), seq_len(ncol(x)), x,
+        col = palette, zlim = zlim, asp = 1, axes = FALSE,
+        xlab = "", ylab = "", main = main)
+}
+op <- par(mfrow = c(1, 2), mar = c(1, 1, 2, 1))
+draw_slice(slice_matrix(mean_map), "Mean subject contrast")
+contour(seq_len(dims[1]), seq_len(dims[2]), slice_matrix(signal_mask),
+        levels = 0.5, add = TRUE, drawlabels = FALSE,
+        col = "white", lwd = 2)
+draw_slice(slice_matrix(mass), "Above-null energy mass",
+           palette = hcl.colors(80, "Inferno"))
+contour(seq_len(dims[1]), seq_len(dims[2]), slice_matrix(signal_mask),
+        levels = 0.5, add = TRUE, drawlabels = FALSE,
+        col = "white", lwd = 2)
+par(op)
+```
+
+For two-group analyses, `scale_space_twosample()` provides a simple label
+permutation wrapper. For unbalanced clinical/control data or models with
+nuisance covariates, prefer a GLM null generator.
+
+```{r glm-null-example}
+group <- factor(rep(c("control", "case"), each = 4), levels = c("control", "case"))
+age <- seq_along(group)
+
+glm_null <- null_glm(
+  subject_images,
+  design = ~ group + age,
+  data = data.frame(group = group, age = age),
+  contrast = "groupcase",
+  n_perm = 19,
+  seed = 2
+)
+
+glm_fit <- scale_space_energy(
+  stat_vol = glm_null$stat_vol,
+  mask = glm_null$mask,
+  null_spec = glm_null,
+  scales = scale_space(c(4, 8), include_global = TRUE, include_identity = TRUE),
+  statistics = list(local_energy()),
+  n_perm = 19
+)
+
+summary(glm_fit)
+```
+
+```{r glm-checks, include = FALSE}
+stopifnot(inherits(glm_null, "neurothresh_null_spec"))
+stopifnot(inherits(glm_fit, "scale_space_energy_result"))
+stopifnot(is.data.frame(summary(glm_fit)))
+```
+
+This approach is related to post-statistic spatial filtering methods such as
+LISA: the same spatial operation is applied to observed and permuted maps before
+inference. The distinction is that scale-space localized energy inference
+searches a prespecified resolution family and uses max-null FWER over the full
+search. It is therefore not smoothing until significance; the smoothing scales
+are part of the corrected test family.

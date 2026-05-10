@@ -192,9 +192,9 @@ octree_split <- function(indices, x, y, z, min_voxels = 8) {
   result <- list()
   for (child_idx in children) {
     if (length(child_idx) >= min_voxels) {
-      result <- c(result, octree_split(child_idx, x, y, z, min_voxels))
+      result <- .append_list(result, octree_split(child_idx, x, y, z, min_voxels))
     } else if (length(child_idx) > 0) {
-      result <- c(result, list(child_idx))
+      result[[length(result) + 1L]] <- child_idx
     }
   }
 

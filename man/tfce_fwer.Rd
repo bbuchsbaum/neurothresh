@@ -7,44 +7,64 @@
 tfce_fwer(
   stat_vol,
   mask = NULL,
-  n_perm = 5000,
+  alpha = 0.05,
+  tail = c("pos", "neg", "two"),
   H = 2,
   E = 0.5,
   dh = 0.1,
-  alpha = 0.05,
-  seed = NULL,
-  tail = c("pos", "neg", "two")
+  null_spec = NULL,
+  null_fun = NULL,
+  n_perm = NULL,
+  allow_voxel_signflip = FALSE,
+  seed = NULL
 )
 }
 \arguments{
-\item{stat_vol}{NeuroVol containing statistic map}
+\item{stat_vol}{3D Z-equivalent statistic map.}
 
-\item{mask}{Optional LogicalNeuroVol for analysis domain}
+\item{mask}{Optional logical 3D mask.}
 
-\item{n_perm}{Number of permutations (default 5000)}
+\item{alpha}{Significance level (default 0.05).}
 
-\item{H}{Height exponent (default 2.0)}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}.}
 
-\item{E}{Extent exponent (default 0.5)}
+\item{H}{Height exponent (default 2.0).}
 
-\item{dh}{Threshold increment (default 0.1)}
+\item{E}{Extent exponent (default 0.5).}
 
-\item{alpha}{Significance level (default 0.05)}
+\item{dh}{Threshold increment (default 0.1).}
 
-\item{seed}{Random seed for reproducibility}
+\item{null_spec}{A \code{\link{null_spec}} supplying \code{n_perm} deterministic null
+draws.}
 
-\item{tail}{"pos", "neg", or "two"}
+\item{null_fun}{Optional function \code{function(b)} returning a null draw
+for permutation \code{b}. Kept for compatibility with the package's older
+permutation API; prefer \code{null_spec} for new code.}
+
+\item{n_perm}{Number of permutations to consume from \code{null_spec}. Defaults
+to \code{null_spec$n_perm}.}
+
+\item{allow_voxel_signflip}{Logical; if \code{TRUE}, allows a fallback to
+independent voxel sign-flips when neither \code{null_spec} nor
+\code{null_fun} is supplied. This fallback is fast but can be
+anti-conservative for spatially correlated fields.}
+
+\item{seed}{Optional random seed; affects only RNG state outside \code{null_spec}
+(the spec itself is deterministic by index).}
 }
 \value{
-List with components:
-\describe{
-\item{tfce}{TFCE-transformed observed map}
-\item{threshold}{FWER-corrected threshold}
-\item{sig_mask}{Logical mask of significant voxels}
-\item{p_corr}{Voxelwise FWER-corrected p-values}
-}
+A \code{\link{neurothresh_result}} with \code{method = "tfce_fwer"}. \code{pvals} is the
+voxelwise FWER-corrected p-value volume; \code{extras$tfce} holds the observed
+TFCE map; \code{null_max} is the vector of per-permutation max-TFCE values.
 }
 \description{
-Computes TFCE with permutation-based FWER control using the
-maxT procedure.
+Computes TFCE with permutation-based FWER control using the maxT
+procedure. The null distribution is supplied via a \code{\link{null_spec}}; for
+subject-level inference build one with \code{\link[=null_one_sample]{null_one_sample()}} /
+\code{\link[=null_two_sample]{null_two_sample()}} / \code{\link[=null_glm]{null_glm()}}. For a fast voxel-level fallback use
+\code{\link[=null_voxel_signflip]{null_voxel_signflip()}} (note: voxel sign-flips are calibrated only when
+the field is uncorrelated under the null).
+}
+\seealso{
+\code{\link[=tfce_transform]{tfce_transform()}}, \code{\link[=null_voxel_signflip]{null_voxel_signflip()}}, \code{\link[=null_one_sample]{null_one_sample()}}.
 }

@@ -32,4 +32,12 @@ logs/
 
 # Claude state
 .claude/
+
+# Local coordination/runtime state
+.mote/local/
+.omc/
+graphify-out/
+.covr_result.rds
+.rcheck_post.rds
+.rcmdcheck_result.rds
 docs

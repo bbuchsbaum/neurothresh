@@ -85,15 +85,8 @@ generate_null_scores_parcels <- function(z_vec, pi_vec, lab_vec, n_perm,
 
   n_voxels <- length(z_vec)
 
-  # Precompute parcel constants
-  pi2_vec <- pi_vec * pi_vec
-  den1 <- as.numeric(rowsum(pi_vec, group = lab_vec, reorder = FALSE))
-  den2 <- as.numeric(rowsum(pi2_vec, group = lab_vec, reorder = FALSE))
-  log_den1 <- log(den1)
-  inv_sqrt_den2 <- 1 / sqrt(den2)
-
-  parcels <- sort(unique(lab_vec))
-  n_parcels <- length(parcels)
+  const <- .parcel_scoring_constants(pi_vec, lab_vec)
+  n_parcels <- const$n_groups
 
   null_matrix <- matrix(NA_real_, nrow = n_perm, ncol = n_parcels)
 
@@ -104,7 +97,7 @@ generate_null_scores_parcels <- function(z_vec, pi_vec, lab_vec, n_perm,
 
     # Vectorized parcel scoring
     scores <- .score_parcels_vec(z_perm, pi_vec, lab_vec,
-                                 log_den1, inv_sqrt_den2, kappa_grid)
+                                 const$log_den1, const$inv_sqrt_den2, kappa_grid)
     null_matrix[b, ] <- scores
   }
 
@@ -135,6 +128,22 @@ generate_null_scores_parcels <- function(z_vec, pi_vec, lab_vec, n_perm,
   }
 
   pmax(U0, best_soft)
+}
+
+#' Parcel-level constants for vectorized scoring
+#'
+#' @keywords internal
+.parcel_scoring_constants <- function(pi_vec, lab_vec) {
+  pi2_vec <- pi_vec * pi_vec
+  den1 <- as.numeric(rowsum(pi_vec, group = lab_vec, reorder = FALSE))
+  den2 <- as.numeric(rowsum(pi2_vec, group = lab_vec, reorder = FALSE))
+
+  list(
+    den1 = den1,
+    log_den1 = log(den1),
+    inv_sqrt_den2 = 1 / sqrt(den2),
+    n_groups = length(den1)
+  )
 }
 
 #' Create permutation function for hierarchical analysis

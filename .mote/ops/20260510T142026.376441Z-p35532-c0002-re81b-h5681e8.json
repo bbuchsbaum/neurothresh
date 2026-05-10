@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR9268TGX0H1R673WAH4976M","kind":"note","note_kind":"progress","op":"20260510T142026.376441Z-p35532-c0002-re81b-h5681e8","text":"Phase 3: add canonicalize() exported wrapper; remove stat_type/df logic from hier_scan internals","ts":"2026-05-10T14:20:26.376441Z","v":1}

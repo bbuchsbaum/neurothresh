@@ -5,12 +5,15 @@
 \title{Hierarchical LR-MFT Analysis}
 \usage{
 hier_scan(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   parcels = NULL,
   mask = NULL,
   alpha = 0.05,
+  tail = c("pos", "neg", "two"),
   kappa = c(0.5, 1, 2),
+  prior_eta = 0.9,
+  null_spec = NULL,
   n_perm = 1000,
   method = c("stepdown", "hierarchical"),
   gamma = 0.5,
@@ -18,16 +21,13 @@ hier_scan(
   min_voxels = 8,
   min_alpha = 1e-06,
   seed = NULL,
-  stat_type = "Z",
-  df = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9,
+  two_sided = NULL,
   parallel = FALSE,
   n_workers = NULL
 )
 }
 \arguments{
-\item{z_vol}{A NeuroVol object containing Z-scores (or other stat type)}
+\item{stat_vol}{A NeuroVol object containing Z-scores (or other stat type)}
 
 \item{prior_vol}{Optional NeuroVol of prior weights. If NULL, uniform
 priors are used.}
@@ -36,12 +36,19 @@ priors are used.}
 initialization. If NULL, starts from whole brain with octree descent.}
 
 \item{mask}{Optional LogicalNeuroVol defining analysis domain. If NULL,
-uses all finite voxels in z_vol.}
+uses all finite voxels in \code{stat_vol}.}
 
 \item{alpha}{Significance level for FWER control (default 0.05)}
 
+\item{tail}{One of \code{"pos"}, \code{"neg"}, or \code{"two"}.}
+
 \item{kappa}{Temperature parameter(s) for soft-max. Can be a single value
 or vector of values to search over.}
+
+\item{prior_eta}{Mixing weight for prior smoothing with uniform mass.
+Values in [0, 1], where 0 is uniform and 1 is the raw prior.}
+
+\item{null_spec}{Reserved null specification argument for API consistency.}
 
 \item{n_perm}{Number of permutations for null distribution (default 1000)}
 
@@ -59,14 +66,8 @@ or vector of values to search over.}
 
 \item{seed}{Random seed for reproducibility}
 
-\item{stat_type}{Input statistic type: "Z", "t", or "neglog10p"}
-
-\item{df}{Degrees of freedom (required if stat_type = "t")}
-
-\item{two_sided}{Logical, whether to perform two-sided inference}
-
-\item{prior_eta}{Mixing weight for prior smoothing with uniform mass.
-Values in [0, 1], where 0 is uniform and 1 is the raw prior.}
+\item{two_sided}{Deprecated logical shortcut. If TRUE and \code{tail = "pos"},
+uses \code{tail = "two"}.}
 
 \item{parallel}{Logical, whether to parallelize permutation loops using
 future.apply (optional).}
@@ -118,4 +119,10 @@ summary(result)
 plot(result, z_map)
 }
 
+}
+\seealso{
+\code{\link{octree_scan_fwer}} for a global maxT scan;
+\code{\link{octree_scan_stepdown}} for octree step-down;
+\code{\link{tfce_fwer}} and \code{\link{rft_peak_fwer}} for alternative
+thresholding approaches.
 }

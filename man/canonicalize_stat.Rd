@@ -55,10 +55,10 @@ thresholding procedures.
 \details{
 The conversions are:
 \itemize{
-\item Z-scores: Used directly
-\item t-statistics: Converted via \code{qnorm(pt(t, df))}
-\item -log10(p): Converted via \code{qnorm(1 - 10^(-x))} with optional
-sign recovery from \code{sign_vol}
+\item Z-scores: used directly.
+\item t-statistics: converted via \code{qnorm(pt(t, df))}.
+\item -log10(p): converted via \code{qnorm(1 - 10^(-x))} with optional
+sign recovery from \code{sign_vol}.
 }
 }
 \examples{

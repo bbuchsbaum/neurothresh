@@ -11,7 +11,9 @@ test_parcels(
   n_perm,
   kappa_grid,
   alpha = 0.05,
-  seed = NULL
+  seed = NULL,
+  parallel = FALSE,
+  future_packages = NULL
 )
 }
 \arguments{
@@ -28,6 +30,12 @@ test_parcels(
 \item{alpha}{Significance level}
 
 \item{seed}{Random seed (optional)}
+
+\item{parallel}{Logical; if TRUE, use \code{future.apply} to parallelize the
+permutation loop (internal).}
+
+\item{future_packages}{Character vector of packages to load in future workers
+(internal).}
 }
 \value{
 List with components:

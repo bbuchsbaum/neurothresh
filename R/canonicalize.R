@@ -1,8 +1,8 @@
-#' Canonicalize statistical maps to Z-scores
+#' Canonicalize a statistic map to a Z-equivalent volume
 #'
-#' Converts various statistical map types (Z-scores, t-statistics, or
-#' -log10(p) values) to a common Z-score representation for unified
-#' thresholding procedures.
+#' Convenience wrapper around [canonicalize_stat()] that returns only the
+#' Z-equivalent statistic map. This is the canonical first step before calling
+#' inference functions in \pkg{neurothresh}.
 #'
 #' @param stat_vol A NeuroVol object containing the statistical map
 #' @param stat_type Character string specifying the input type:
@@ -23,6 +23,35 @@
 #' @param sign_vol Optional NeuroVol providing sign information for -log10(p)
 #'   inputs to recover directionality
 #'
+#' @return The Z-equivalent statistic volume (same type as `stat_vol`).
+#'   For richer output (one-sided/two-sided p-values, mask), call
+#'   [canonicalize_stat()] directly.
+#' @export
+#' @examples
+#' \dontrun{
+#' zvol <- canonicalize(t_map, stat_type = "t", df = 24)
+#' res <- hier_scan(zvol, parcels = atlas, alpha = 0.05)
+#' }
+canonicalize <- function(stat_vol,
+                         stat_type = c("Z", "t", "neglog10p"),
+                         df = NULL,
+                         tail = c("pos", "neg", "two"),
+                         p_side = c("one", "two"),
+                         sign_vol = NULL) {
+  out <- canonicalize_stat(stat_vol, stat_type = stat_type, df = df,
+                           tail = tail, p_side = p_side,
+                           sign_vol = sign_vol)
+  out$Zeq
+}
+
+#' Canonicalize statistical maps to Z-scores
+#'
+#' Converts various statistical map types (Z-scores, t-statistics, or
+#' -log10(p) values) to a common Z-score representation for unified
+#' thresholding procedures.
+#'
+#' @inheritParams canonicalize
+#'
 #' @return A list with components:
 #'   \describe{
 #'     \item{Zeq}{NeuroVol of equivalent Z-scores}
@@ -34,10 +63,10 @@
 #' @details
 #' The conversions are:
 #' \itemize{
-#'   \item Z-scores: Used directly
-#'   \item t-statistics: Converted via \code{qnorm(pt(t, df))}
-#'   \item -log10(p): Converted via \code{qnorm(1 - 10^(-x))} with optional
-#'     sign recovery from \code{sign_vol}
+#'   \item Z-scores: used directly.
+#'   \item t-statistics: converted via \code{qnorm(pt(t, df))}.
+#'   \item -log10(p): converted via \code{qnorm(1 - 10^(-x))} with optional
+#'     sign recovery from \code{sign_vol}.
 #' }
 #'
 #' @examples

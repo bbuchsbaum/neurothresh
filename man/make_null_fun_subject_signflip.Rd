@@ -7,6 +7,7 @@
 make_null_fun_subject_signflip(
   subject_vols,
   mask = NULL,
+  n_perm = 5000,
   seed = NULL,
   z_equiv = TRUE
 )
@@ -17,6 +18,9 @@ with identical dimensions.}
 
 \item{mask}{Optional logical mask aligned to the volumes. If NULL, uses all
 finite voxels common to all subjects.}
+
+\item{n_perm}{Number of pre-computed sign-flip draws (default 5000); the
+resulting \code{null_fun(b)} is deterministic in \code{b}.}
 
 \item{seed}{Optional RNG seed.}
 
@@ -41,7 +45,7 @@ structure within each subject map and is the recommended way to drive
 resampling-based inference for regional statistics.
 }
 \examples{
-subj <- replicate(10, array(rnorm(20 * 20 * 20), dim = c(20, 20, 20)), simplify = FALSE)
+subj <- replicate(5, array(rnorm(4 * 4 * 4), dim = c(4, 4, 4)), simplify = FALSE)
 sf <- make_null_fun_subject_signflip(subj, seed = 1)
-res <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 200, null_fun = sf$null_fun)
+res <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 5, null_fun = sf$null_fun)
 }

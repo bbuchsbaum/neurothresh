@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR8ZNVQAJ2PSDWX3DTV9SRYE","kind":"note","note_kind":"progress","op":"20260510T134814.634802Z-p29431-c0000-rf51d-h3533f1","text":"Implemented explicit positive_energy(direction='pos'/'neg') channel with tests and documentation. Band-pass / graph-wavelet channel remains deferred.","ts":"2026-05-10T13:48:14.634802Z","v":1}

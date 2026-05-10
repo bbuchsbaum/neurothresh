@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGT54BJBWF9BF6APXGT3","kind":"note","note_kind":"note","op":"20260510T151318.458329Z-p62583-c0000-r245a-h2d52e5","text":"Added LISA local adaptive inference vignette and package index references; vignette rendered successfully via rmarkdown::render().","ts":"2026-05-10T15:13:18.458329Z","v":1}

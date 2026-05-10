@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGT54BJBWF9BF6APXGT3","kind":"reserve_open","mode":"exclusive","op":"20260510T151218.455966Z-p62438-c0000-r77a7-h7ff014","paths":["vignettes/lisa-local-adaptive-inference.Rmd","R/neurothresh-package.R"],"reservation_id":"rv-01KR974GGQJAYS1AXMSHZEHSVC","ts":"2026-05-10T15:12:18.455966Z","ttl_s":3600,"v":1}

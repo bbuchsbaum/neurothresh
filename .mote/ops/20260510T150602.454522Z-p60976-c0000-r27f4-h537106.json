@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGAZ9J60V23FHDAQ0E4Q","kind":"reserve_open","mode":"exclusive","op":"20260510T150602.454522Z-p60976-c0000-r27f4-h537106","paths":["R/lisa_fdr.R","tests/testthat/test-lisa.R"],"reservation_id":"rv-01KR96S1APM77N55QZZ27MT3H0","ts":"2026-05-10T15:06:02.454522Z","ttl_s":3600,"v":1}

@@ -27,9 +27,9 @@ Any statistical thresholding method must satisfy two requirements:
 2. **Detect real signals**: When there is a real signal, we want high
    statistical power to find it.
 
-This vignette runs small simulations to verify that `neurothresh` achieves both
-goals. We use small grids and few permutations for speed; real analyses should
-use larger values.
+This vignette runs small simulations that illustrate both goals. The examples
+are deliberately small so they can run during package checks; use larger grids,
+more simulation replicates, and more permutations for a real calibration study.
 
 ```{r load-package}
 library(neurothresh)
@@ -116,8 +116,24 @@ cat("Estimated FWER:", fwer_estimate, "\n")
 cat("Expected (alpha = 0.05):", 0.05, "\n")
 ```
 
-The estimated FWER should be close to 0.05. Some variation is expected due to
-Monte Carlo noise.
+```{r fwer-checks, include = FALSE}
+stopifnot(is.finite(fwer_estimate))
+stopifnot(fwer_estimate >= 0, fwer_estimate <= 0.15)
+stopifnot(is.finite(threshold))
+```
+
+The estimated FWER should be in the neighborhood of 0.05. Some variation is
+expected because this vignette uses only 200 fresh null samples.
+
+```{r fwer-plot, echo = FALSE, fig.cap = "The null distribution defines the decision threshold. Fresh null simulations crossing the red line become false positives."}
+op <- par(mar = c(4, 4, 1, 1))
+hist(null_scores, breaks = 24, col = "grey85", border = "white",
+     main = "", xlab = "Null soft-max score")
+abline(v = threshold, col = "firebrick", lwd = 2)
+text(threshold, par("usr")[4] * 0.9, "95% threshold", pos = 4,
+     col = "firebrick")
+par(op)
+```
 
 ## Power Comparison: Soft-max vs Peak Maximum
 
@@ -126,13 +142,16 @@ Now let's compare two approaches for detecting a spatially extended signal:
 1. **Soft-max score**: Aggregates evidence across the entire field
 2. **Peak maximum**: Only looks at the single highest voxel
 
-When the signal is spread across multiple voxels (a "blob"), the soft-max
-should have higher power because it accumulates evidence.
+When the signal is broad and low-amplitude, the soft-max and peak maximum can
+behave differently because one accumulates weak evidence and the other responds
+to the single largest value.
 
 ```{r power}
+set.seed(789)
 B <- 200
-amp <- 1.5                    # Signal amplitude
+amp <- 0.5                    # Low signal amplitude
 center <- c(15, 15)           # Center of the blob
+blob_radius <- 6              # Broad spatial extent
 
 # We already have the soft-max threshold from above
 thr_soft <- threshold
@@ -150,7 +169,7 @@ power_max <- 0
 for (b in seq_len(B)) {
   # Generate noise + blob signal
   z <- smooth_field(matrix(rnorm(n * n), nrow = n), kernel)
-  z <- insert_blob(z, center, radius = 2, amp = amp)
+  z <- insert_blob(z, center, radius = blob_radius, amp = amp)
 
   # Test both methods
   power_soft <- power_soft + (softmax_score(z, kappa = 1) >= thr_soft)
@@ -163,8 +182,23 @@ cat("  Soft-max:", results["softmax"], "\n")
 cat("  Peak max:", results["peak_max"], "\n")
 ```
 
-The soft-max typically shows higher power for this blob-shaped signal because
-it pools evidence across the activated region.
+```{r power-checks, include = FALSE}
+stopifnot(all(is.finite(results)))
+stopifnot(all(results >= 0), all(results <= 1))
+```
+
+The printed values show the estimated detection rate for this particular
+seeded toy setup. Change `amp` and `blob_radius` to see when aggregation helps
+more than peak detection.
+
+```{r power-plot, echo = FALSE, fig.cap = "Estimated detection rate for a broad low-amplitude signal. This gives a visual check on whether region-level aggregation or peak detection is favored under the chosen signal shape."}
+op <- par(mar = c(4, 4, 1, 1))
+cols <- c("#2C7FB8", "#F03B20")
+barplot(results, ylim = c(0, 1), col = cols, ylab = "Detection rate",
+        names.arg = c("Soft-max", "Peak max"))
+abline(h = 0.05, lty = 2, col = "grey40")
+par(op)
+```
 
 ## 3D Octree Scanning
 
@@ -175,17 +209,21 @@ hierarchical decomposition. Here's a quick check that it runs correctly:
 set.seed(1)
 z_null <- array(rnorm(20 * 20 * 20), dim = c(20, 20, 20))
 
-# Run with correlated null model
-res <- octree_scan_fwer(
-  z_null,
-  n_perm = 100,
-  null = "mc_fwhm",
-  fwhm_vox = c(2, 2, 2)
-)
+# Build a Monte-Carlo Gaussian null with the smoothness you want to assume
+ns <- null_mc_fwhm(template = z_null, mask = is.finite(z_null),
+                   smoothness = smoothness_fwhm(c(4, 4, 4)),
+                   n_perm = 100, seed = 1)
+res <- octree_scan_fwer(z_null, null_spec = ns)
 
-cat("Threshold:", round(res$u, 3), "\n")
-cat("Observed score:", round(res$M_obs, 3), "\n")
-cat("Rejected (should usually be FALSE for null data):", res$M_obs >= res$u, "\n")
+cat("Threshold:", round(res$threshold, 3), "\n")
+cat("Rejected voxels:", sum(res$reject), "\n")
+```
+
+```{r octree-checks, include = FALSE}
+stopifnot(inherits(res, "neurothresh_result"))
+stopifnot(is.finite(res$threshold))
+stopifnot(identical(dim(res$reject), dim(z_null)))
+stopifnot(sum(res$reject) < length(z_null) / 10)
 ```
 
 ## Practical Recommendations
@@ -194,8 +232,38 @@ These toy examples use small grids and few permutations for demonstration.
 For real neuroimaging analyses:
 
 - Use at least 1000-5000 permutations for stable thresholds
-- When possible, use subject-level resampling (`make_null_fun_subject_signflip`)
-  rather than model-based null generation
-- The `mc_fwhm` null model assumes stationary Gaussian smoothness, which is
-  approximate for real brain data; if you have long-tailed ACF parameters from
-  upstream tools, consider `null = "mc_acf"` with `acf_params`
+- When possible, use subject-level resampling (`null_one_sample()` /
+  `null_subject_signflip()`) rather than model-based null generation
+- The `null_mc_fwhm` null model assumes stationary Gaussian smoothness, which
+  is approximate for real brain data; if you have long-tailed ACF parameters
+  from upstream tools, consider `null_mc_acf(smoothness_acf(...))` instead
+
+## Resampling Choice for TFCE and Cluster-FDR
+
+For TFCE and permutation cluster-FDR, the choice of resampling model can
+substantially affect false-positive behavior. The helper
+`run_resampling_fwer_study()` compares:
+
+- default voxelwise sign-flips, and
+- subject-level sign-flips via `null_one_sample()` / `null_subject_signflip()`.
+
+```{r resampling-study, eval=FALSE}
+study <- run_resampling_fwer_study(
+  n_sims = 40,
+  dims = c(10, 10, 10),
+  n_subj = 16,
+  n_perm = 80,
+  alpha = 0.05,
+  cluster_thresh = 2.5,
+  fwhm_vox = 2,
+  tail = "pos",
+  seed = 2026
+)
+
+study$summary
+```
+
+In this type of null experiment, the "any discovery" rate estimates
+FWER (and equals FDR for cluster-FDR under the complete null). This gives a
+practical calibration check for your resampling assumptions before running real
+inference.

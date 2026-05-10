@@ -5,37 +5,61 @@
 \title{Octree scan with hierarchical step-down inference (U0-only)}
 \usage{
 octree_scan_stepdown(
-  z_vol,
+  stat_vol,
   prior_vol = NULL,
   mask = NULL,
   alpha = 0.05,
-  n_perm = 1000,
+  tail = c("pos", "neg", "two"),
+  prior_eta = 0.9,
+  gamma = 0.5,
+  min_voxels = 8,
+  min_alpha = 1e-06,
+  report = c("coarsest", "finest", "greedy"),
+  null_spec = NULL,
+  n_perm = NULL,
+  seed = NULL,
   null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
   null_fun = NULL,
   fwhm_vox = NULL,
   fwhm_mm = NULL,
   acf_params = NULL,
-  gamma = 0.5,
-  min_voxels = 8,
-  min_alpha = 1e-06,
-  report = c("coarsest", "finest", "greedy"),
-  seed = NULL,
-  two_sided = FALSE,
-  prior_eta = 0.9
+  two_sided = NULL
 )
 }
 \arguments{
-\item{z_vol}{A 3D volume-like object containing Z-equivalent values.}
+\item{stat_vol}{A 3D volume-like object containing Z-equivalent values.}
 
-\item{prior_vol}{Optional prior weight volume aligned to \code{z_vol}.
+\item{prior_vol}{Optional prior weight volume aligned to \code{stat_vol}.
 If NULL, uniform weights are used.}
 
-\item{mask}{Optional logical mask (same shape as \code{z_vol}). If NULL,
-uses all finite voxels in \code{z_vol}.}
+\item{mask}{Optional logical mask (same shape as \code{stat_vol}). If NULL,
+uses all finite voxels in \code{stat_vol}.}
 
 \item{alpha}{FWER target (default 0.05).}
 
-\item{n_perm}{Number of sign-flip permutations per tested family (default 1000).}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, or \code{"two"}.}
+
+\item{prior_eta}{Mixing weight in [0, 1] to shrink the prior toward uniform
+mass (default 0.9).}
+
+\item{gamma}{Fraction of the local alpha budget used to test the current
+sibling family (default 0.5). Remaining budget is split among rejected
+children by prior mass.}
+
+\item{min_voxels}{Minimum child size to consider for descent (default 8).}
+
+\item{min_alpha}{Minimum alpha budget to continue descent (default 1e-6).}
+
+\item{report}{How to select a non-redundant set of regions from the discovered
+significant nodes: \code{"coarsest"}, \code{"finest"}, or \code{"greedy"}.}
+
+\item{null_spec}{Optional \code{\link{null_spec}} supplying deterministic null draws.
+If supplied and \code{null_fun} is NULL, its \code{draw} function is used.}
+
+\item{n_perm}{Number of sign-flip permutations per tested family. Defaults
+to \code{null_spec$n_perm} when \code{null_spec} is supplied, otherwise 1000.}
+
+\item{seed}{Optional RNG seed.}
 
 \item{null}{Null calibration method.
 \describe{
@@ -69,24 +93,8 @@ available.}
 \item{lambda_vox}{Exponential kernel scale in voxel units (length 1 or 3).}
 }}
 
-\item{gamma}{Fraction of the local alpha budget used to test the current
-sibling family (default 0.5). Remaining budget is split among rejected
-children by prior mass.}
-
-\item{min_voxels}{Minimum child size to consider for descent (default 8).}
-
-\item{min_alpha}{Minimum alpha budget to continue descent (default 1e-6).}
-
-\item{report}{How to select a non-redundant set of regions from the discovered
-significant nodes: \code{"coarsest"}, \code{"finest"}, or \code{"greedy"}.}
-
-\item{seed}{Optional RNG seed.}
-
-\item{two_sided}{Logical; if TRUE, uses \code{abs(z_vol)} for the observed map
+\item{two_sided}{Logical; if TRUE, uses \code{abs(stat_vol)} for the observed map
 and permutations (two-sided via absolute Z).}
-
-\item{prior_eta}{Mixing weight in [0, 1] to shrink the prior toward uniform
-mass (default 0.9).}
 }
 \value{
 A list with components:
@@ -113,4 +121,9 @@ Note: this is not the same as a global Westfall-Young step-down over the full
 set of dyadic cubes (which would require the joint null distribution over
 all hypotheses). Use \code{\link{octree_scan_fwer}} for a single-step maxT
 procedure over the full dyadic-cube family.
+}
+\seealso{
+\code{\link{octree_scan_fwer}} for single-step maxT calibration;
+\code{\link{hier_scan}} for LR-MFT hierarchical inference;
+\code{\link{cluster_fdr}} for cluster-level FDR control.
 }

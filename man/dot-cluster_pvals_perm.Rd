@@ -4,7 +4,17 @@
 \alias{.cluster_pvals_perm}
 \title{Permutation cluster p-values}
 \usage{
-.cluster_pvals_perm(z, mask, u0, obs_clusters, n_perm, seed)
+.cluster_pvals_perm(
+  dims,
+  mask,
+  u0,
+  obs_clusters,
+  n_perm,
+  seed,
+  null_fun,
+  n_full,
+  mask_idx
+)
 }
 \description{
 Permutation cluster p-values

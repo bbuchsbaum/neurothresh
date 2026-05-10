@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR94NGFA0ZYMH01H5K0RYTHJ","kind":"note","note_kind":"note","op":"20260510T151318.206509Z-p62584-c0000-r229e-h38f9dc","text":"Implemented lisa_onesample(), lisa_twosample(), and lisa_glm() as thin wrappers over shared null factories with focused tests.","ts":"2026-05-10T15:13:18.206509Z","v":1}

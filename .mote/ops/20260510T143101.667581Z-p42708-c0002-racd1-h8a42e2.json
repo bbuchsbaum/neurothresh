@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR926P2W7G3VVRF6X0DW8HF1","kind":"note","note_kind":"progress","op":"20260510T143101.667581Z-p42708-c0002-racd1-h8a42e2","text":"Phase 4c: migrate tfce_fwer + tfce_transform; add tail='two' to tfce_transform; route through null_spec","ts":"2026-05-10T14:31:01.667581Z","v":1}

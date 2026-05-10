@@ -1,0 +1,1 @@
+{"actor":"claude-api","entity":"bd-01KR9266T92XET91XCA2GB6BG1","kind":"note","note_kind":"note","op":"20260510T142026.239726Z-p35531-c0000-r620b-hecb179","text":"smoothness_fwhm() and smoothness_acf() with neurothresh_smoothness class hierarchy. Strict input validation. is_smoothness() predicate. print methods. Tests 26/26 pass.","ts":"2026-05-10T14:20:26.239726Z","v":1}

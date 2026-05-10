@@ -23,6 +23,10 @@ NULL
 #' @param gamma Fraction of alpha for testing at each level (default 0.5)
 #' @param min_alpha Minimum alpha to continue testing (default 1e-6)
 #' @param min_voxels Minimum region size to test (default 8)
+#' @param parallel Logical; if TRUE, use \code{future.apply} to parallelize the
+#'   permutation loop (internal).
+#' @param future_packages Character vector of packages to load in future workers
+#'   (internal).
 #'
 #' @return List of discovered regions with scores and p-values
 #'
@@ -32,7 +36,8 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
                          perm_fun, n_perm, kappa_grid,
                          gamma = 0.5, min_alpha = 1e-6,
                          min_voxels = 8,
-                         parallel = FALSE) {
+                         parallel = FALSE,
+                         future_packages = NULL) {
 
   hits <- list()
 
@@ -67,7 +72,7 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
         z_perm, idx_parent, split$w_parent, split$child_id,
         split$log_den1, split$inv_sqrt_den2, kappa_pos, do_abs = FALSE
       )
-    }, future.seed = TRUE)
+    }, future.seed = TRUE, future.packages = future_packages)
     t_null <- do.call(rbind, t_null_list)
   } else {
     t_null <- matrix(NA_real_, nrow = n_perm, ncol = split$m)
@@ -120,9 +125,10 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
         z_vec, pi_vec, x, y, z,
         perm_fun, n_perm, kappa_grid,
         gamma, min_alpha, min_voxels,
-        parallel = parallel
+        parallel = parallel,
+        future_packages = future_packages
       )
-      hits <- c(hits, child_hits)
+      hits <- .append_list(hits, child_hits)
     }
   }
 
@@ -146,6 +152,10 @@ hier_descend <- function(idx_parent, bbox, alpha_budget,
 #' @param gamma Fraction of alpha for testing at each level (default 0.5)
 #' @param min_alpha Minimum alpha to continue testing (default 1e-6)
 #' @param min_voxels Minimum region size to test (default 8)
+#' @param parallel Logical; if TRUE, use \code{future.apply} to parallelize the
+#'   permutation loop (internal).
+#' @param future_packages Character vector of packages to load in future workers
+#'   (internal).
 #'
 #' @return List of discovered regions with scores and p-values
 #'
@@ -155,7 +165,8 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
                                perm_fun, n_perm, kappa_grid,
                                gamma = 0.5, min_alpha = 1e-6,
                                min_voxels = 8,
-                               parallel = FALSE) {
+                               parallel = FALSE,
+                               future_packages = NULL) {
 
   hits <- list()
 
@@ -171,7 +182,7 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
     perm_scores <- future.apply::future_lapply(seq_len(n_perm), function(b) {
       z_perm <- perm_fun(b)
       score_set_omnibus(idx_parent, z_perm, pi_vec, kappa_grid)$T_omnibus
-    }, future.seed = TRUE)
+    }, future.seed = TRUE, future.packages = future_packages)
     ge <- sum(unlist(perm_scores) >= s_obs)
   } else {
     for (b in seq_len(n_perm)) {
@@ -219,9 +230,10 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
       z_vec, pi_vec, x, y, z,
       perm_fun, n_perm, kappa_grid,
       gamma, min_alpha, min_voxels,
-      parallel = parallel
+      parallel = parallel,
+      future_packages = future_packages
     )
-    hits <- c(hits, child_hits)
+    hits <- .append_list(hits, child_hits)
   }
 
   hits
@@ -239,6 +251,10 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
 #' @param kappa_grid Numeric vector of positive kappa values
 #' @param alpha Significance level
 #' @param seed Random seed (optional)
+#' @param parallel Logical; if TRUE, use \code{future.apply} to parallelize the
+#'   permutation loop (internal).
+#' @param future_packages Character vector of packages to load in future workers
+#'   (internal).
 #'
 #' @return List with components:
 #'   \describe{
@@ -250,21 +266,17 @@ hier_descend_alpha <- function(idx_parent, bbox, alpha_budget,
 #' @keywords internal
 test_parcels <- function(z_vec, pi_vec, lab_vec, n_perm, kappa_grid,
                          alpha = 0.05, seed = NULL,
-                         parallel = FALSE) {
+                         parallel = FALSE,
+                         future_packages = NULL) {
 
-  # Precompute parcel constants
-  pi2_vec <- pi_vec * pi_vec
-  den1 <- as.numeric(rowsum(pi_vec, group = lab_vec, reorder = FALSE))
-  den2 <- as.numeric(rowsum(pi2_vec, group = lab_vec, reorder = FALSE))
-  log_den1 <- log(den1)
-  inv_sqrt_den2 <- 1 / sqrt(den2)
+  const <- .parcel_scoring_constants(pi_vec, lab_vec)
 
   parcels <- sort(unique(lab_vec))
-  n_parcels <- length(parcels)
+  n_parcels <- const$n_groups
 
   # Observed parcel scores
   t_obs <- .score_parcels_vec(z_vec, pi_vec, lab_vec,
-                              log_den1, inv_sqrt_den2, kappa_grid)
+                              const$log_den1, const$inv_sqrt_den2, kappa_grid)
 
   # Null parcel scores
   if (!is.null(seed)) set.seed(seed)
@@ -274,15 +286,15 @@ test_parcels <- function(z_vec, pi_vec, lab_vec, n_perm, kappa_grid,
     t_null_list <- future.apply::future_lapply(seq_len(n_perm), function(b) {
       z_perm <- perm_fun(b)
       .score_parcels_vec(z_perm, pi_vec, lab_vec,
-                         log_den1, inv_sqrt_den2, kappa_grid)
-    }, future.seed = TRUE)
+                         const$log_den1, const$inv_sqrt_den2, kappa_grid)
+    }, future.seed = TRUE, future.packages = future_packages)
     t_null <- do.call(rbind, t_null_list)
   } else {
     t_null <- matrix(NA_real_, nrow = n_perm, ncol = n_parcels)
     for (b in seq_len(n_perm)) {
       z_perm <- perm_fun(b)
       t_null[b, ] <- .score_parcels_vec(z_perm, pi_vec, lab_vec,
-                                        log_den1, inv_sqrt_den2, kappa_grid)
+                                        const$log_den1, const$inv_sqrt_den2, kappa_grid)
     }
   }
 
@@ -301,6 +313,19 @@ test_parcels <- function(z_vec, pi_vec, lab_vec, n_perm, kappa_grid,
     stepdown = sd,
     sig_parcels = sig_parcels,
     parcel_indices = parcel_indices,
-    den1 = den1
+    den1 = const$den1
   )
+}
+
+#' Append one list into another without repeated c() growth
+#'
+#' @keywords internal
+.append_list <- function(target, items) {
+  n_items <- length(items)
+  if (n_items == 0L) return(target)
+  start <- length(target)
+  for (i in seq_len(n_items)) {
+    target[[start + i]] <- items[[i]]
+  }
+  target
 }

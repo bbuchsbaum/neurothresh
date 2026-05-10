@@ -6,13 +6,20 @@
 #' over all dyadic cubes in an implicit octree, and calibrates a global
 #' threshold by a maxT permutation (sign-flip) procedure.
 #'
-#' @param z_vol A 3D volume-like object with finite values in-brain.
-#' @param prior_vol Optional prior weight volume aligned to \code{z_vol}.
+#' @param stat_vol A 3D volume-like object with finite values in-brain.
+#' @param prior_vol Optional prior weight volume aligned to \code{stat_vol}.
 #'   If NULL, uniform weights are used.
-#' @param mask Optional logical mask (same shape as \code{z_vol}). If NULL,
-#'   uses all finite voxels in \code{z_vol}.
+#' @param mask Optional logical mask (same shape as \code{stat_vol}). If NULL,
+#'   uses all finite voxels in \code{stat_vol}.
 #' @param alpha Significance level for strong FWER control (default 0.05).
-#' @param n_perm Number of permutations/sign-flips (default 1000).
+#' @param tail One of \code{"pos"}, \code{"neg"}, or \code{"two"}.
+#' @param prior_eta Mixing weight in \[0, 1\] to shrink the prior toward uniform
+#'   mass (default 0.9).
+#' @param null_spec Optional [`null_spec`] supplying deterministic null draws.
+#'   If supplied and \code{null_fun} is NULL, its \code{draw} function is used.
+#' @param n_perm Number of permutations/sign-flips. Defaults to
+#'   `null_spec$n_perm` when `null_spec` is supplied, otherwise 1000.
+#' @param seed Optional RNG seed for reproducibility.
 #' @param null Null calibration method.
 #'   \describe{
 #'     \item{\code{"mc_fwhm"}}{Correlated Monte Carlo null via Gaussian smoothing
@@ -40,10 +47,7 @@
 #'     \item{fwhm_vox}{Gaussian ACF FWHM in voxel units (length 1 or 3).}
 #'     \item{lambda_vox}{Exponential kernel scale in voxel units (length 1 or 3).}
 #'   }
-#' @param seed Optional RNG seed for reproducibility.
-#' @param two_sided Logical; if TRUE, uses \code{abs(z_vol)} prior to sign-flips.
-#' @param prior_eta Mixing weight in \[0, 1\] to shrink the prior toward uniform
-#'   mass (default 0.9).
+#' @param two_sided Logical; if TRUE, uses \code{abs(stat_vol)} prior to sign-flips.
 #'
 #' @return A list with components:
 #'   \describe{
@@ -83,25 +87,56 @@
 #' sf <- make_null_fun_subject_signflip(subj)
 #' res3 <- octree_scan_fwer(sf$z_vol, mask = sf$mask, n_perm = 50, null_fun = sf$null_fun)
 #'
+#' @seealso
+#' \code{\link{octree_scan_stepdown}} for hierarchical step-down;
+#' \code{\link{hier_scan}} for LR-MFT hierarchical inference;
+#' \code{\link{tfce_fwer}} and \code{\link{rft_peak_fwer}} for alternative methods.
 #' @export
-octree_scan_fwer <- function(z_vol,
+octree_scan_fwer <- function(stat_vol,
                              prior_vol = NULL,
                              mask = NULL,
                              alpha = 0.05,
-                             n_perm = 1000,
+                             tail = c("pos", "neg", "two"),
+                             prior_eta = 0.9,
+                             null_spec = NULL,
+                             n_perm = NULL,
+                             seed = NULL,
                              null = c("signflip_voxel", "mc_fwhm", "mc_acf"),
                              null_fun = NULL,
                              fwhm_vox = NULL,
                              fwhm_mm = NULL,
                              acf_params = NULL,
-                             seed = NULL,
-                             two_sided = FALSE,
-                             prior_eta = 0.9) {
+                             two_sided = NULL) {
   null <- match.arg(null)
+  tail <- match.arg(tail)
+  call_capture <- match.call()
+
+  if (!is.null(two_sided)) {
+    if (isTRUE(two_sided) && tail == "pos") tail <- "two"
+  }
+
+  if (!is.null(null_spec)) {
+    if (!is_null_spec(null_spec)) {
+      stop("null_spec must be a neurothresh_null_spec (see ?null_spec)")
+    }
+    if (!is.null(null_fun)) {
+      stop("provide only one of null_spec or null_fun")
+    }
+    if (is.null(n_perm)) n_perm <- null_spec$n_perm
+    if (n_perm > null_spec$n_perm) {
+      stop(sprintf("n_perm = %d exceeds null_spec$n_perm = %d",
+                   n_perm, null_spec$n_perm))
+    }
+    null_fun <- null_spec$draw
+  } else if (is.null(n_perm)) {
+    n_perm <- 1000L
+  }
+
+  z_vol <- stat_vol
   if (!is.null(seed)) set.seed(seed)
 
   dims <- dim(z_vol)
-  if (length(dims) != 3) stop("z_vol must be a 3D volume-like object")
+  if (length(dims) != 3) stop("stat_vol must be a 3D volume-like object")
 
   if (is.null(mask)) {
     mask <- is.finite(as.numeric(z_vol))
@@ -113,8 +148,10 @@ octree_scan_fwer <- function(z_vol,
   n_mask <- length(mask_idx)
   if (n_mask == 0) stop("No valid voxels in mask")
 
-  z_vec <- as.numeric(z_vol)[mask_idx]
-  if (two_sided) z_vec <- abs(z_vec)
+  z_vec_raw <- as.numeric(z_vol)[mask_idx]
+  z_vec <- z_vec_raw
+  if (tail == "neg") z_vec <- -z_vec
+  do_abs <- tail == "two"
 
   if (is.null(prior_vol)) {
     pi_vec <- rep(1.0, n_mask)
@@ -132,7 +169,7 @@ octree_scan_fwer <- function(z_vol,
   den_xptr <- build_den_pyramid_xptr_cpp(x0, y0, z0, pi_vec, side)
   mask_full_idx0 <- .full_index0(x0, y0, z0, side)
 
-  obs <- pyramid_scores_u0_cpp(z_vec, pi_vec, x0, y0, z0, den_xptr, do_abs = FALSE)
+  obs <- pyramid_scores_u0_cpp(z_vec, pi_vec, x0, y0, z0, den_xptr, do_abs = do_abs)
   M_obs <- obs$max_score
 
   if (is.null(null_fun)) {
@@ -143,7 +180,7 @@ octree_scan_fwer <- function(z_vol,
         "or null='mc_fwhm' with an appropriate fwhm_vox.",
         call. = FALSE
       )
-      null_fun <- make_null_fun_voxel_signflip(z_vec)
+      null_fun <- make_null_fun_voxel_signflip(z_vec_raw)
     } else if (null == "mc_fwhm") {
       if (!is.null(fwhm_mm)) {
         if (inherits(z_vol, "NeuroVol")) {
@@ -164,11 +201,13 @@ octree_scan_fwer <- function(z_vol,
 
   M_null <- numeric(n_perm)
   for (b in seq_len(n_perm)) {
-    Zb <- null_fun(b)
-    M_null[b] <- pyramid_max_u0_cpp(Zb, pi_vec, x0, y0, z0, den_xptr, do_abs = FALSE)
+    Zb <- .coerce_null_draw(null_fun(b), n_full = prod(dims), mask_idx = mask_idx)[mask_idx]
+    if (tail == "neg") Zb <- -Zb
+    M_null[b] <- pyramid_max_u0_cpp(Zb, pi_vec, x0, y0, z0, den_xptr, do_abs = do_abs)
   }
 
-  u <- unname(stats::quantile(M_null, probs = 1 - alpha, names = FALSE))
+  # Use a discrete order-statistic cutoff aligned with plus-one permutation p-values.
+  u <- fwer_threshold_from_maxnull(M_null, alpha = alpha)
 
   nodes <- obs$nodes
   nodes$scale <- 2^nodes$level
@@ -177,22 +216,40 @@ octree_scan_fwer <- function(z_vol,
 
   sig_nodes <- nodes[nodes$score > u, , drop = FALSE]
 
-  list(
-    u = u,
-    M_obs = M_obs,
-    M_null = M_null,
-    nodes = nodes,
-    sig_nodes = sig_nodes,
+  reject <- array(FALSE, dim = dims)
+  if (nrow(sig_nodes) > 0L) {
+    for (i in seq_len(nrow(sig_nodes))) {
+      reject[
+        sig_nodes$x0[i]:sig_nodes$x1[i],
+        sig_nodes$y0[i]:sig_nodes$y1[i],
+        sig_nodes$z0[i]:sig_nodes$z1[i]
+      ] <- TRUE
+    }
+  }
+  reject <- reject & array(as.logical(mask), dim = dims)
+
+  res <- new_neurothresh_result(
+    method = "octree_scan_fwer",
+    stat_vol = stat_vol, mask = mask,
+    threshold = u,
+    reject = reject,
+    pvals = array(NA_real_, dim = dims),
+    clusters = sig_nodes,
+    null_max = M_null,
     params = list(
-      alpha = alpha,
-      n_perm = n_perm,
-      two_sided = two_sided,
-      side = side,
-      null = null,
-      fwhm_vox = fwhm_vox,
-      fwhm_mm = fwhm_mm
-    )
+      alpha = alpha, tail = tail,
+      n_perm = n_perm, side = side, null = null,
+      fwhm_vox = fwhm_vox, fwhm_mm = fwhm_mm
+    ),
+    call = call_capture,
+    extras = list(nodes = nodes)
   )
+  res$u <- u
+  res$M_obs <- M_obs
+  res$M_null <- M_null
+  res$nodes <- nodes
+  res$sig_nodes <- sig_nodes
+  res
 }
 
 #' @keywords internal
