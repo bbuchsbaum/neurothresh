@@ -168,19 +168,48 @@ scale_space_energy <- function(stat_vol = NULL,
   for (j in seq_along(obs_stat)) {
     p <- p_corr[[j]]
     i_best <- which.min(p)
+    any_supported <- any(p <= alpha)
+    n_supported <- sum(p <= alpha)
+    if (identical(meta$scale_type[j], "global") || identical(meta$channel_scope[j], "global")) {
+      n_supported <- as.integer(any_supported)
+    }
     rows[[j]] <- cbind(
       meta[j, , drop = FALSE],
       min_p = p[i_best],
       max_stat = max(obs_stat[[j]], na.rm = TRUE),
-      any_supported = any(p <= alpha),
-      n_supported = sum(p <= alpha)
+      any_supported = any_supported,
+      n_supported = n_supported
     )
   }
   out <- do.call(rbind, rows)
   if (!is.null(effective_basis)) {
     out$effective_basis <- effective_basis[out$scale_index]
   }
+  out$p_fwer <- out$min_p
+  out$scale_label <- .ss_scale_label(out$scale_type, out$fwhm_mm)
+  out$curve_use <- .ss_curve_use(out$channel, out$channel_role, out$frequency_readout)
   rownames(out) <- NULL
+  out
+}
+
+#' @keywords internal
+.ss_scale_label <- function(scale_type, fwhm_mm) {
+  ifelse(
+    scale_type == "global",
+    "global",
+    ifelse(scale_type == "identity", "voxel", paste0(format(fwhm_mm, trim = TRUE), " mm"))
+  )
+}
+
+#' @keywords internal
+.ss_curve_use <- function(channel, channel_role, frequency_readout) {
+  out <- ifelse(
+    frequency_readout,
+    "spatial-frequency readout",
+    "resolution-localization evidence"
+  )
+  out[channel == "local_energy"] <- "localized squared evidence; not a spectral-energy curve"
+  out[grepl("^signed_coherence", channel)] <- "signed low-pass coherence; opposite signs can cancel"
   out
 }
 
@@ -209,14 +238,23 @@ scale_space_energy <- function(stat_vol = NULL,
 .ss_selected_scales <- function(summary, alpha) {
   best_i <- which.min(summary$min_p)
   supported <- summary[summary$any_supported, , drop = FALSE]
-  finite_supported <- supported[is.finite(supported$fwhm_mm), , drop = FALSE]
+  finite_supported <- supported[
+    is.finite(supported$fwhm_mm) & supported$channel_scope == "local",
+    , drop = FALSE
+  ]
   finest <- if (nrow(finite_supported)) {
     finite_supported[which.min(finite_supported$fwhm_mm), , drop = FALSE]
   } else {
     supported[0, , drop = FALSE]
   }
+  freq <- summary[summary$frequency_readout, , drop = FALSE]
+  best_frequency <- if (nrow(freq)) freq[which.min(freq$min_p), , drop = FALSE] else summary[0, , drop = FALSE]
+  loc <- summary[summary$channel_scope == "local", , drop = FALSE]
+  best_localization <- if (nrow(loc)) loc[which.min(loc$min_p), , drop = FALSE] else summary[0, , drop = FALSE]
   list(
     best = summary[best_i, , drop = FALSE],
+    best_frequency = best_frequency,
+    best_localization = best_localization,
     finest_detected = finest,
     stable_range = .ss_stable_range(supported)
   )
@@ -239,6 +277,12 @@ print.scale_space_energy_result <- function(x, ...) {
   cat("  permutations:", x$params$n_perm, "\n")
   cat("  channels:", paste(x$channels, collapse = ", "), "\n")
   cat("  omnibus p_FWER:", format(min(x$summary$min_p), digits = 4), "\n")
+  freq <- unique(x$summary$channel[x$summary$frequency_readout])
+  if (length(freq)) {
+    cat("  frequency-readout channels:", paste(freq, collapse = ", "), "\n")
+  } else {
+    cat("  frequency-readout channels: none\n")
+  }
   invisible(x)
 }
 
@@ -259,6 +303,76 @@ plot_resolution_curve <- function(fit, ...) {
   if (!inherits(fit, "scale_space_energy_result")) stop("fit must be a scale_space_energy_result")
   out <- fit$summary
   out$neg_log10_p <- -log10(out$min_p)
+  out$resolution_order <- .ss_resolution_order(out$scale_type, out$fwhm_mm)
+  out <- out[order(out$resolution_order, out$channel_index), , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+#' Diagnose Scale-Space Evidence Curves
+#'
+#' Summarizes each requested channel by its intended interpretation. In
+#' particular, this separates localized evidence channels from channels that
+#' support a spatial-frequency readout.
+#'
+#' @param fit A \code{scale_space_energy_result}.
+#'
+#' @return A data frame with one row per statistic channel.
+#'
+#' @export
+scale_space_diagnostics <- function(fit) {
+  if (!inherits(fit, "scale_space_energy_result")) stop("fit must be a scale_space_energy_result")
+  s <- fit$summary
+  rows <- lapply(split(s, s$channel), function(d) {
+    best <- d[which.min(d$min_p), , drop = FALSE]
+    supported <- d[d$any_supported & is.finite(d$fwhm_mm) & d$scale_type == "gaussian", , drop = FALSE]
+    data.frame(
+      channel = best$channel,
+      role = best$channel_role,
+      curve_use = best$curve_use,
+      frequency_readout = isTRUE(best$frequency_readout),
+      best_scale = best$scale_label,
+      best_p_fwer = best$min_p,
+      finest_supported = if (nrow(supported)) {
+        .ss_scale_label("gaussian", min(supported$fwhm_mm))
+      } else {
+        NA_character_
+      },
+      supported_range = if (nrow(supported)) {
+        paste0(min(supported$fwhm_mm), "-", max(supported$fwhm_mm), " mm")
+      } else {
+        NA_character_
+      },
+      interpretation = .ss_channel_interpretation(best$channel),
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out[order(!out$frequency_readout, out$channel), , drop = FALSE]
+}
+
+#' @keywords internal
+.ss_resolution_order <- function(scale_type, fwhm_mm) {
+  ifelse(scale_type == "global", -Inf,
+         ifelse(scale_type == "identity", Inf, -fwhm_mm))
+}
+
+#' @keywords internal
+.ss_channel_interpretation <- function(channel) {
+  out <- rep("Scale-space evidence channel.", length(channel))
+  out[channel == "global_lowpass_energy"] <-
+    "Cumulative low-pass energy. Use the curve to ask how much signed-map energy remains at or below each spatial resolution."
+  out[channel == "lowpass_energy"] <-
+    "Local low-pass signed energy. Useful for spatial maps of coherent low-frequency structure."
+  out[channel == "global_band_energy"] <-
+    "Global band-pass energy. This is the primary curve for reading out the dominant spatial-frequency band."
+  out[channel == "bandpass_energy"] <-
+    "Local band-pass energy. Use for localized evidence in a spatial-frequency band."
+  out[channel == "local_energy"] <-
+    "Localized S(z^2). This detects above-null squared evidence near a location, but it is not a pure spatial-frequency energy curve."
+  out[grepl("^signed_coherence", channel)] <-
+    "Signed low-pass coherence. Same-sign effects reinforce; opposite signs cancel."
   out
 }
 
@@ -296,7 +410,9 @@ plot_scale_space_map <- function(fit,
 #' Above-Null Energy Mass Map
 #'
 #' @param fit A \code{scale_space_energy_result}.
-#' @param scale_index Scale index to extract.
+#' @param scale_index Scale index to extract. Defaults to the strongest finite
+#'   \code{local_energy} scale. The global endpoint is not valid for an energy
+#'   mass map because it is spatially constant.
 #' @param mass Optional cumulative mass cutoff.
 #'
 #' @return A volume-like normalized above-null energy mass map.
@@ -305,9 +421,12 @@ plot_scale_space_map <- function(fit,
 energy_mass_map <- function(fit, scale_index = NULL, mass = NULL) {
   if (!inherits(fit, "scale_space_energy_result")) stop("fit must be a scale_space_energy_result")
   fam <- fit$family
-  if (is.null(scale_index)) scale_index <- fit$selected$best$scale_index[1L]
+  if (is.null(scale_index)) scale_index <- .ss_default_energy_mass_scale(fit)
   idx <- which(fam$scale_index == scale_index & fam$channel == "local_energy")[1L]
   if (!length(idx) || is.na(idx)) stop("local_energy not available at requested scale")
+  if (identical(fam$scale_type[idx], "global")) {
+    stop("energy_mass_map() requires a finite local_energy scale; the global endpoint is spatially constant")
+  }
   vals <- pmax(fit$observed$statistic[[idx]], 0)
   if (sum(vals) > 0) vals <- vals / sum(vals)
   if (!is.null(mass)) {
@@ -320,4 +439,22 @@ energy_mass_map <- function(fit, scale_index = NULL, mass = NULL) {
   full <- rep(NA_real_, prod(fit$dims))
   full[fit$mask_idx] <- vals
   .array_to_vol(full, fit$dims, fit$template)
+}
+
+#' @keywords internal
+.ss_default_energy_mass_scale <- function(fit) {
+  s <- fit$summary
+  rows <- s[s$channel == "local_energy" & s$scale_type != "global", , drop = FALSE]
+  if (!nrow(rows)) {
+    stop("energy_mass_map() requires local_energy() in the fitted statistics")
+  }
+  supported <- rows[rows$any_supported & is.finite(rows$fwhm_mm), , drop = FALSE]
+  if (nrow(supported)) {
+    return(supported$scale_index[which.min(supported$min_p)])
+  }
+  finite <- rows[is.finite(rows$fwhm_mm), , drop = FALSE]
+  if (nrow(finite)) {
+    return(finite$scale_index[which.min(finite$min_p)])
+  }
+  rows$scale_index[which.min(rows$min_p)]
 }

@@ -49,9 +49,39 @@ scale_space <- function(fwhm_mm,
 
 #' Local Energy Statistic Channel
 #'
+#' Computes \eqn{S_\rho(z^2)}. This is a localized squared-statistic
+#' evidence detector, not a direct spatial-frequency decomposition.
+#'
 #' @export
 local_energy <- function() {
   structure(list(name = "local_energy"), class = c("ss_local_energy", "ss_channel"))
+}
+
+#' Low-Pass Energy Statistic Channel
+#'
+#' Computes energy after smoothing the signed statistic field. With
+#' \code{scope = "global"}, the statistic is \eqn{\sum_v [S_\rho z(v)]^2},
+#' a cumulative low-frequency energy curve. With \code{scope = "local"}, the
+#' statistic is \eqn{[S_\rho z(v)]^2}.
+#'
+#' @param scope \code{"global"} returns one whole-map statistic per scale;
+#'   \code{"local"} returns a location-wise field.
+#'
+#' @export
+lowpass_energy <- function(scope = c("global", "local")) {
+  scope <- match.arg(scope)
+  structure(list(name = "lowpass_energy", scope = scope),
+            class = c("ss_lowpass_energy", "ss_channel"))
+}
+
+#' Global Low-Pass Energy Statistic Channel
+#'
+#' Convenience wrapper for \code{lowpass_energy(scope = "global")}. Use this
+#' when the goal is to plot cumulative low-frequency energy across scale.
+#'
+#' @export
+global_lowpass_energy <- function() {
+  lowpass_energy(scope = "global")
 }
 
 #' Signed Coherence Statistic Channel
@@ -77,25 +107,48 @@ positive_energy <- function(direction = c("pos", "neg")) {
             class = c("ss_positive_energy", "ss_channel"))
 }
 
-#' Band-Pass Local Energy Statistic Channel
+#' Band-Pass Energy Statistic Channel
 #'
 #' Explicit opt-in spatial band-pass channel using a difference of smoothers
-#' around the requested scale.
+#' around the requested scale. The local form returns a field
+#' \eqn{[S_{\rho/r}z(v) - S_{\rho r}z(v)]^2}. The global form returns
+#' \eqn{\sum_v [S_{\rho/r}z(v) - S_{\rho r}z(v)]^2}, which is the clearest
+#' curve for reading out the dominant spatial-frequency band.
+#'
+#' @param ratio Multiplicative scale ratio around the target FWHM.
+#' @param scope \code{"local"} preserves the historical location-wise behavior;
+#'   \code{"global"} returns one whole-map statistic per scale.
+#'
+#' @export
+bandpass_energy <- function(ratio = sqrt(2), scope = c("local", "global")) {
+  scope <- match.arg(scope)
+  if (!is.numeric(ratio) || length(ratio) != 1L || !is.finite(ratio) || ratio <= 1) {
+    stop("ratio must be a finite scalar > 1")
+  }
+  structure(list(name = "bandpass_energy", ratio = ratio, scope = scope),
+            class = c("ss_bandpass_energy", "ss_channel"))
+}
+
+#' Global Band-Pass Energy Statistic Channel
+#'
+#' Convenience wrapper for \code{bandpass_energy(scope = "global")}. Use this
+#' when the scientific target is the spatial-frequency band with maximal
+#' corrected evidence.
 #'
 #' @param ratio Multiplicative scale ratio around the target FWHM.
 #'
 #' @export
-bandpass_energy <- function(ratio = sqrt(2)) {
-  if (!is.numeric(ratio) || length(ratio) != 1L || !is.finite(ratio) || ratio <= 1) {
-    stop("ratio must be a finite scalar > 1")
-  }
-  structure(list(name = "bandpass_energy", ratio = ratio),
-            class = c("ss_bandpass_energy", "ss_channel"))
+global_band_energy <- function(ratio = sqrt(2)) {
+  bandpass_energy(ratio = ratio, scope = "global")
 }
 
 #' @keywords internal
 .ss_channel_name <- function(channel) {
   if (!inherits(channel, "ss_channel")) stop("statistics must be channel objects")
+  if (inherits(channel, "ss_lowpass_energy")) {
+    if (identical(channel$scope, "global")) return("global_lowpass_energy")
+    return("lowpass_energy")
+  }
   if (inherits(channel, "ss_signed_coherence")) {
     return(paste0("signed_coherence_", channel$tail))
   }
@@ -103,9 +156,39 @@ bandpass_energy <- function(ratio = sqrt(2)) {
     return(paste0("positive_energy_", channel$direction))
   }
   if (inherits(channel, "ss_bandpass_energy")) {
+    if (identical(channel$scope, "global")) return("global_band_energy")
     return("bandpass_energy")
   }
   channel$name
+}
+
+#' @keywords internal
+.ss_channel_role <- function(channel) {
+  if (inherits(channel, "ss_lowpass_energy")) {
+    if (identical(channel$scope, "global")) return("cumulative low-pass spectral energy")
+    return("local low-pass signed energy")
+  }
+  if (inherits(channel, "ss_bandpass_energy")) {
+    if (identical(channel$scope, "global")) return("global band-pass spectral energy")
+    return("local band-pass spectral energy")
+  }
+  if (inherits(channel, "ss_local_energy")) return("localized squared-statistic evidence")
+  if (inherits(channel, "ss_positive_energy")) return("directional localized squared-statistic evidence")
+  if (inherits(channel, "ss_signed_coherence")) return("signed low-pass coherence")
+  "scale-space statistic"
+}
+
+#' @keywords internal
+.ss_channel_frequency_readout <- function(channel) {
+  inherits(channel, "ss_lowpass_energy") || inherits(channel, "ss_bandpass_energy")
+}
+
+#' @keywords internal
+.ss_channel_scope <- function(channel) {
+  if (inherits(channel, "ss_lowpass_energy") || inherits(channel, "ss_bandpass_energy")) {
+    return(channel$scope)
+  }
+  "local"
 }
 
 #' @keywords internal
@@ -168,6 +251,16 @@ bandpass_energy <- function(ratio = sqrt(2)) {
                            backend = backend, graph_cache = graph_cache))
   }
 
+  if (inherits(channel, "ss_lowpass_energy")) {
+    smoothed <- .ss_apply_scale(z_mask, scale, dims, mask, mask_idx, template,
+                                backend = backend, graph_cache = graph_cache)
+    e <- smoothed^2
+    if (identical(channel$scope, "global")) {
+      return(rep(sum(e), length(z_mask)))
+    }
+    return(e)
+  }
+
   if (inherits(channel, "ss_positive_energy")) {
     qz <- if (channel$direction == "neg") -z_mask else z_mask
     e <- pmax(qz, 0)^2
@@ -192,7 +285,11 @@ bandpass_energy <- function(ratio = sqrt(2)) {
                           backend = backend, graph_cache = graph_cache)
     bc <- .ss_apply_scale(z_mask, coarse, dims, mask, mask_idx, template,
                           backend = backend, graph_cache = graph_cache)
-    return((bf - bc)^2)
+    e <- (bf - bc)^2
+    if (identical(channel$scope, "global")) {
+      return(rep(sum(e), length(z_mask)))
+    }
+    return(e)
   }
 
   if (inherits(channel, "ss_signed_coherence")) {
@@ -237,6 +334,9 @@ bandpass_energy <- function(ratio = sqrt(2)) {
         scale_type = scales$type[si],
         fwhm_mm = scales$fwhm_mm[si],
         channel = .ss_channel_name(channels[[ci]]),
+        channel_role = .ss_channel_role(channels[[ci]]),
+        channel_scope = .ss_channel_scope(channels[[ci]]),
+        frequency_readout = .ss_channel_frequency_readout(channels[[ci]]),
         stringsAsFactors = FALSE
       )
       k <- k + 1L

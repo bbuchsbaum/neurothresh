@@ -21,11 +21,15 @@ test_that("channel contracts handle sign and energy metamorphisms", {
   s2 <- neurothresh:::.ss_eval_channel_scale(-z, signed_coherence("pos"), id, dims, mask, mask_idx, template)
   ppos <- neurothresh:::.ss_eval_channel_scale(z, positive_energy("pos"), id, dims, mask, mask_idx, template)
   pneg <- neurothresh:::.ss_eval_channel_scale(z, positive_energy("neg"), id, dims, mask, mask_idx, template)
+  lp <- neurothresh:::.ss_eval_channel_scale(z, lowpass_energy("local"), id, dims, mask, mask_idx, template)
+  glp <- neurothresh:::.ss_eval_channel_scale(z, global_lowpass_energy(), id, dims, mask, mask_idx, template)
 
   expect_equal(e1, e2)
   expect_equal(s1, -s2)
   expect_equal(ppos, pmax(z, 0)^2)
   expect_equal(pneg, pmax(-z, 0)^2)
+  expect_equal(lp, z^2)
+  expect_equal(glp, rep(sum(z^2), length(z)))
 })
 
 test_that("scale_space_energy returns plus-one corrected maps and summaries", {
@@ -49,6 +53,7 @@ test_that("scale_space_energy returns plus-one corrected maps and summaries", {
   expect_true(all(c("best", "finest_detected", "stable_range") %in% names(fit$selected)))
   expect_equal(nrow(summary(fit)), 6)
   expect_true("effective_basis" %in% names(summary(fit)))
+  expect_true(all(c("channel_role", "frequency_readout", "curve_use", "scale_label") %in% names(summary(fit))))
   expect_equal(
     summary(fit)$effective_basis[summary(fit)$scale_type == "global"][1],
     1
@@ -312,6 +317,14 @@ test_that("identity scale endpoints reproduce voxelwise channels exactly", {
     neurothresh:::.ss_eval_channel_scale(z, signed_coherence("two"), id, dims, mask, mask_idx, template),
     abs(z)
   )
+  expect_equal(
+    neurothresh:::.ss_eval_channel_scale(z, lowpass_energy("local"), id, dims, mask, mask_idx, template),
+    z^2
+  )
+  expect_equal(
+    neurothresh:::.ss_eval_channel_scale(z, global_lowpass_energy(), id, dims, mask, mask_idx, template),
+    rep(sum(z^2), length(z))
+  )
 })
 
 test_that("effective_basis is monotone non-increasing in FWHM", {
@@ -422,4 +435,65 @@ test_that("bandpass energy is explicit and finite on gaussian scales", {
   expect_true(all(is.finite(unlist(fit$observed$statistic))))
   expect_equal(fit$observed$raw[[1]], rep(0, length(fit$observed$raw[[1]])))
   expect_equal(fit$observed$raw[[3]], rep(0, length(fit$observed$raw[[3]])))
+})
+
+test_that("spectral energy channels expose frequency-readout diagnostics", {
+  set.seed(41)
+  dims <- c(5L, 5L, 1L)
+  z <- array(rnorm(prod(dims)), dims)
+  null <- null_voxel_signflip(z, n_perm = 5, seed = 41)
+
+  fit <- scale_space_energy(
+    z,
+    scales = scale_space(c(2, 4), include_global = TRUE, include_identity = TRUE),
+    statistics = list(local_energy(), global_lowpass_energy(), global_band_energy()),
+    null_fun = null$draw,
+    n_perm = 5,
+    studentize = FALSE
+  )
+
+  expect_true(all(c("global_lowpass_energy", "global_band_energy") %in% fit$channels))
+  expect_true(all(fit$summary$frequency_readout[fit$summary$channel %in% c("global_lowpass_energy", "global_band_energy")]))
+  expect_false(any(fit$summary$frequency_readout[fit$summary$channel == "local_energy"]))
+
+  diag <- scale_space_diagnostics(fit)
+  expect_s3_class(diag, "data.frame")
+  expect_true("interpretation" %in% names(diag))
+  expect_true(diag$frequency_readout[diag$channel == "global_band_energy"])
+
+  curve <- plot_resolution_curve(fit)
+  expect_true("resolution_order" %in% names(curve))
+  expect_equal(curve$scale_label[curve$scale_type == "global"][1], "global")
+  expect_equal(curve$scale_label[curve$scale_type == "identity"][1], "voxel")
+
+  # Global band energy has no meaningful global or identity endpoint.
+  gb <- fit$observed$raw[fit$family$channel == "global_band_energy"]
+  expect_equal(gb[[1]], rep(0, prod(dims)))
+  expect_equal(gb[[length(gb)]], rep(0, prod(dims)))
+})
+
+test_that("energy_mass_map avoids spatially constant global endpoint", {
+  dims <- c(5L, 5L, 1L)
+  z <- array(0, dims)
+  z[2:4, 2:4, 1] <- 3
+  null <- null_voxel_signflip(z, n_perm = 5, seed = 42)
+
+  fit <- scale_space_energy(
+    z,
+    scales = scale_space(2, include_global = TRUE, include_identity = TRUE),
+    statistics = list(global_lowpass_energy(), local_energy()),
+    null_fun = null$draw,
+    n_perm = 5,
+    studentize = FALSE
+  )
+
+  expect_error(
+    energy_mass_map(fit, scale_index = fit$summary$scale_index[fit$summary$scale_type == "global"][1]),
+    "global endpoint"
+  )
+
+  mass <- as.numeric(energy_mass_map(fit))
+  mass <- mass[is.finite(mass)]
+  expect_equal(sum(mass), 1, tolerance = 1e-12)
+  expect_gt(diff(range(mass)), 0)
 })

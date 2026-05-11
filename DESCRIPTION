@@ -20,7 +20,7 @@ Depends:
 Imports:
     Matrix,
     Rcpp (>= 1.0.0),
-    neuroim2 (>= 0.8.0),
+    neuroim2 (>= 0.16.0),
     methods,
     stats
 Suggests:

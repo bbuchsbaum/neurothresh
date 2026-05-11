@@ -9,7 +9,9 @@ energy_mass_map(fit, scale_index = NULL, mass = NULL)
 \arguments{
 \item{fit}{A \code{scale_space_energy_result}.}
 
-\item{scale_index}{Scale index to extract.}
+\item{scale_index}{Scale index to extract. Defaults to the strongest finite
+\code{local_energy} scale. The global endpoint is not valid for an energy
+mass map because it is spatially constant.}
 
 \item{mass}{Optional cumulative mass cutoff.}
 }

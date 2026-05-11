@@ -16,7 +16,6 @@ lisa(
   p0 = 1,
   monotone = TRUE,
   scale_n_null = 30L,
-  backend = c("neuroim2", "reference", "adjoin_sparse"),
   store_filtered_nulls = FALSE
 )
 }
@@ -49,8 +48,6 @@ aligned with other permutation-facing neurothresh methods.}
 
 \item{scale_n_null}{Number of early null maps used for fixed range-scale
 estimation when \code{filter$scale = "sd_first_30_nulls"}.}
-
-\item{backend}{Filtering backend.}
 
 \item{store_filtered_nulls}{Whether to store the full permutation-by-voxel
 filtered null matrix in \code{extras}. Defaults to \code{FALSE}; inference uses

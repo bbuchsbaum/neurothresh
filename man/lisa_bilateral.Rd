@@ -9,8 +9,7 @@ lisa_bilateral(
   sigma_space = 2,
   sigma_range = 2,
   n_iter = 2L,
-  scale = c("sd_first_30_nulls", "per_map", "none"),
-  boundary = c("neuroim2", "mask_normalized", "lisa2018")
+  scale = c("sd_first_30_nulls", "per_map", "none")
 )
 }
 \arguments{
@@ -18,27 +17,21 @@ lisa_bilateral(
 
 \item{sigma_space}{Spatial Gaussian sigma in voxel units.}
 
-\item{sigma_range}{Range/intensity sigma. With the \code{reference} backend and a
-supplied range scale, the effective range sigma is
-\code{sigma_range * range_scale}.}
+\item{sigma_range}{Range/intensity sigma. With a fixed range scale, the
+effective range sigma is \code{sigma_range * range_scale}.}
 
 \item{n_iter}{Number of repeated filtering iterations.}
 
 \item{scale}{Range-scale policy. \code{"sd_first_30_nulls"} estimates one fixed
 range scale from early null maps. \code{"per_map"} uses each map's own masked
 standard deviation. \code{"none"} uses a unit range scale.}
-
-\item{boundary}{Boundary policy. \code{"neuroim2"} faithfully delegates to
-\code{neuroim2::bilateral_filter()}. \code{"mask_normalized"} excludes out-of-mask
-neighbors in the reference backend. \code{"lisa2018"} is reserved for the
-paper-style median fallback and currently errors.}
 }
 \value{
 Object of class \code{"neurothresh_lisa_filter"}.
 }
 \description{
-Creates a filter specification for LISA local adaptive inference. The
-default backend delegates to \code{neuroim2::bilateral_filter()}; a small
-reference backend is available for tests and exact mask-aware semantics on
-small arrays.
+Creates a filter specification for LISA local adaptive inference. LISA uses
+the \code{neuroim2::bilateral_filter()} implementation, whose neighborhoods are
+mask-normalized so only in-mask, in-bounds neighbors contribute to each
+filtered statistic.
 }

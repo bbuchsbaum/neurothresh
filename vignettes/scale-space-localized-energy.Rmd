@@ -23,6 +23,14 @@ resolution continuum. The low-level API deliberately follows the rest of
 `neurothresh`: the inferential engine consumes an observed statistic map plus a
 calibrated null generator.
 
+There are two related but distinct questions:
+
+* **Localization:** at what resolution can an effect be detected?
+* **Frequency readout:** at what spatial band is the effect strongest?
+
+`local_energy()` answers the first question. For the second, use
+`global_lowpass_energy()` or `global_band_energy()`.
+
 ```{r simulate-subject-images}
 library(neurothresh)
 
@@ -58,6 +66,8 @@ fit <- scale_space_onesample(
     include_identity = TRUE
   ),
   statistics = list(
+    global_lowpass_energy(),
+    global_band_energy(),
     local_energy(),
     signed_coherence(tail = "two")
   ),
@@ -84,22 +94,51 @@ the effect is detectable at that localization scale.
 
 ```{r resolution-summary}
 resolution <- plot_resolution_curve(fit)
-resolution[, c("scale_type", "fwhm_mm", "channel", "min_p", "any_supported")]
+resolution[, c("scale_label", "channel", "min_p", "any_supported", "curve_use")]
+```
+
+`scale_space_diagnostics()` labels each curve by its intended interpretation.
+This is useful because a local-energy curve should not be read as a pure
+spatial-frequency spectrum.
+
+```{r scale-space-diagnostics}
+scale_space_diagnostics(fit)[, c(
+  "channel", "frequency_readout", "best_scale", "best_p_fwer",
+  "supported_range", "curve_use"
+)]
+```
+
+The selected scales are separated by target. `best_frequency` is the strongest
+spatial-frequency readout, while `best_localization` is the strongest
+location-wise scale-space evidence.
+
+```{r selected-scale-targets}
+fit$selected$best_frequency[, c("channel", "scale_label", "p_fwer", "curve_use")]
+fit$selected$best_localization[, c("channel", "scale_label", "p_fwer", "curve_use")]
 ```
 
 ```{r resolution-curve-plot, echo = FALSE, fig.cap = "Corrected evidence across the localization continuum. Higher values indicate stronger familywise-corrected evidence; the dashed line marks alpha = 0.10."}
-energy_curve <- subset(resolution, channel == "local_energy")
-x <- seq_len(nrow(energy_curve))
-labels <- ifelse(is.infinite(energy_curve$fwhm_mm), "global",
-                 ifelse(energy_curve$fwhm_mm == 0, "identity",
-                        paste0(energy_curve$fwhm_mm, " mm")))
-y <- -log10(energy_curve$min_p)
+plot_channels <- c("global_lowpass_energy", "global_band_energy", "local_energy")
+plot_df <- subset(resolution, channel %in% plot_channels)
+scale_df <- unique(plot_df[c("scale_index", "scale_label", "resolution_order")])
+scale_df <- scale_df[order(scale_df$resolution_order), ]
+plot_df$x <- match(plot_df$scale_index, scale_df$scale_index)
+cols <- c(
+  global_lowpass_energy = "#CC79A7",
+  global_band_energy = "#009E73",
+  local_energy = "#0072B2"
+)
 op <- par(mar = c(4.8, 4, 1, 1))
-plot(x, y, type = "b", pch = 19, lwd = 2, col = "#2C7FB8",
-     xaxt = "n", xlab = "Resolution scale", ylab = expression(-log[10](p[FWER])),
-     ylim = c(0, max(y, -log10(0.1)) * 1.15))
-axis(1, at = x, labels = labels, las = 2)
+plot(NA, xlim = range(plot_df$x), ylim = c(0, max(plot_df$neg_log10_p, -log10(0.1)) * 1.15),
+     xaxt = "n", xlab = "Resolution scale", ylab = expression(-log[10](p[FWER])))
+for (ch in plot_channels) {
+  d <- subset(plot_df, channel == ch)
+  lines(d$x, d$neg_log10_p, type = "b", pch = 19, lwd = 2, col = cols[[ch]])
+}
+axis(1, at = seq_len(nrow(scale_df)), labels = scale_df$scale_label, las = 2)
 abline(h = -log10(0.1), lty = 2, col = "firebrick")
+legend("topright", legend = c("low-pass", "band-pass", "local energy"),
+       col = cols[plot_channels], lwd = 2, pch = 19, bty = "n")
 par(op)
 ```
 
@@ -108,8 +147,13 @@ that a localized test centered at that location and bandwidth has corrected
 evidence. For local-energy display, use above-null energy summaries rather than
 raw `z^2` maps.
 
+For spatial-frequency interpretation, prefer `global_band_energy()`: its peak
+is the band with strongest corrected evidence. `global_lowpass_energy()` is
+cumulative, so coarse curves can remain strong even when the effect is not
+confined to one band.
+
 ```{r energy-mass-summary}
-mass <- energy_mass_map(fit, scale_index = fit$selected$best$scale_index[1])
+mass <- energy_mass_map(fit)
 range(as.numeric(mass), na.rm = TRUE)
 ```
 
@@ -168,7 +212,7 @@ glm_fit <- scale_space_energy(
   mask = glm_null$mask,
   null_spec = glm_null,
   scales = scale_space(c(4, 8), include_global = TRUE, include_identity = TRUE),
-  statistics = list(local_energy()),
+  statistics = list(global_band_energy(), local_energy()),
   n_perm = 19
 )
 
@@ -179,6 +223,88 @@ summary(glm_fit)
 stopifnot(inherits(glm_null, "neurothresh_null_spec"))
 stopifnot(inherits(glm_fit, "scale_space_energy_result"))
 stopifnot(is.data.frame(summary(glm_fit)))
+```
+
+## What if you only have a statistic map?
+
+You do not need to store all permutation maps in memory. If an upstream workflow
+can regenerate the `b`th null statistic map, pass that deterministic draw
+function directly.
+
+```{r stat-map-plus-null-fun}
+draw_null_map <- function(b) {
+  glm_null$draw(b)
+}
+
+fit_from_function <- scale_space_energy(
+  stat_vol = glm_null$stat_vol,
+  mask = glm_null$mask,
+  null_fun = draw_null_map,
+  n_perm = glm_null$n_perm,
+  scales = scale_space(c(4, 8), include_global = TRUE, include_identity = TRUE),
+  statistics = list(global_lowpass_energy(), global_band_energy(), local_energy())
+)
+
+scale_space_diagnostics(fit_from_function)[, c(
+  "channel", "frequency_readout", "best_scale", "best_p_fwer", "curve_use"
+)]
+```
+
+The draw function must be deterministic by index: `draw_null_map(7)` should
+return the same map every time. `scale_space_energy()` makes multiple passes
+over the same null family to estimate null moments and then compute the
+max-null distribution.
+
+```{r stat-map-plus-null-spec}
+external_null <- null_from_function(
+  draw = draw_null_map,
+  stat_vol = glm_null$stat_vol,
+  mask = glm_null$mask,
+  n_perm = glm_null$n_perm,
+  kind = "external_stat_map_generator"
+)
+
+fit_from_null_spec <- scale_space_energy(
+  external_null,
+  scales = scale_space(c(4, 8), include_global = TRUE, include_identity = TRUE),
+  statistics = list(global_band_energy(), local_energy())
+)
+
+summary(fit_from_null_spec)[, c("scale_label", "channel", "p_fwer", "curve_use")]
+```
+
+```{r stat-map-null-function-checks, include = FALSE}
+stopifnot(identical(draw_null_map(3), draw_null_map(3)))
+stopifnot(inherits(external_null, "neurothresh_null_spec"))
+stopifnot(inherits(fit_from_function, "scale_space_energy_result"))
+stopifnot(inherits(fit_from_null_spec, "scale_space_energy_result"))
+```
+
+If you already have precomputed null maps, use `null_from_maps()` instead. The
+statistical requirement is the same in both cases: the observed map and every
+null map must be produced by the same upstream statistic and must pass through
+the same scale-space transforms before correction.
+
+```{r stat-map-plus-null-maps}
+stored_null_maps <- lapply(seq_len(glm_null$n_perm), draw_null_map)
+maps_null <- null_from_maps(
+  stat_vol = glm_null$stat_vol,
+  null_maps = stored_null_maps,
+  mask = glm_null$mask
+)
+
+fit_from_maps <- scale_space_energy(
+  maps_null,
+  scales = scale_space(8, include_global = TRUE, include_identity = TRUE),
+  statistics = list(global_band_energy(), local_energy())
+)
+
+scale_space_diagnostics(fit_from_maps)[, c("channel", "best_scale", "best_p_fwer")]
+```
+
+```{r stat-map-null-maps-checks, include = FALSE}
+stopifnot(inherits(maps_null, "neurothresh_null_spec"))
+stopifnot(inherits(fit_from_maps, "scale_space_energy_result"))
 ```
 
 This approach is related to post-statistic spatial filtering methods such as

@@ -119,6 +119,26 @@ shapes (`$sig_mask`, `$u`, `$M_obs`, `$max_null`, `$table`,
 `$n_clusters`, `$cluster_labels`, `$tfce`) remain available as aliases on
 the new object so existing code keeps working.
 
+### Scale-space frequency diagnostics
+
+Scale-space inference now separates localization evidence from spatial-frequency
+readout. `local_energy()` remains the localized squared-evidence channel.
+New `global_lowpass_energy()` and `global_band_energy()` channels support
+cumulative low-pass and band-pass frequency curves, respectively.
+`scale_space_diagnostics()` labels each requested curve so users can tell
+whether a result should be interpreted as localization evidence or as a
+spatial-frequency readout.
+
+### LISA uses one bilateral filter path
+
+LISA now uses a single production filter implementation:
+`neuroim2::bilateral_filter()` from neuroim2 0.16.0, whose bilateral
+neighborhoods are mask-normalized by default. The public `backend` switch and
+reserved sparse backend have been removed. The filter passes a fixed
+`range_scale` when using the default `scale = "sd_first_30_nulls"` policy, so
+observed and null statistic maps are filtered under the same intensity
+bandwidth.
+
 ### Polymorphic subject-level inputs
 
 `as_subject_matrix()` (replacing `as_image_matrix()`) now accepts a list

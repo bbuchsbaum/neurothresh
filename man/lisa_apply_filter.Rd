@@ -8,7 +8,6 @@ lisa_apply_filter(
   stat_vol,
   mask = NULL,
   filter = lisa_bilateral(),
-  backend = c("neuroim2", "reference", "adjoin_sparse"),
   range_scale = NULL
 )
 }
@@ -19,9 +18,8 @@ lisa_apply_filter(
 
 \item{filter}{A LISA filter specification from \code{\link[=lisa_bilateral]{lisa_bilateral()}}.}
 
-\item{backend}{Filtering backend: \code{"neuroim2"} or \code{"reference"}.}
-
-\item{range_scale}{Optional fixed range scale for the reference backend.}
+\item{range_scale}{Optional fixed range scale. If \code{NULL}, the filter uses
+the map's masked standard deviation.}
 }
 \value{
 Filtered volume-like object aligned to \code{stat_vol}.

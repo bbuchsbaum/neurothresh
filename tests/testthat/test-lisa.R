@@ -32,35 +32,46 @@ test_that("lisa_bilateral validates filter settings", {
   expect_error(lisa_bilateral(sigma_range = -1), "positive")
 })
 
-test_that("reference LISA filter preserves constant maps inside the mask", {
+test_that("LISA filter preserves constant maps inside the mask", {
   z <- array(3, c(3, 3, 3))
   mask <- array(TRUE, c(3, 3, 3))
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 1,
-                      n_iter = 1, scale = "none",
-                      boundary = "mask_normalized")
-  out <- lisa_apply_filter(z, mask = mask, filter = f, backend = "reference")
+                      n_iter = 1, scale = "none")
+  out <- lisa_apply_filter(z, mask = mask, filter = f)
   expect_equal(as.numeric(out)[mask], rep(3, sum(mask)), tolerance = 1e-12)
 })
 
-test_that("reference LISA filter smooths an impulse locally", {
+test_that("LISA filter smooths an impulse locally", {
   z <- array(0, c(5, 5, 5))
   z[3, 3, 3] <- 10
   mask <- array(TRUE, c(5, 5, 5))
   f <- lisa_bilateral(radius = 1, sigma_space = 2, sigma_range = 100,
-                      n_iter = 1, scale = "none",
-                      boundary = "mask_normalized")
-  out <- lisa_apply_filter(z, mask = mask, filter = f, backend = "reference")
+                      n_iter = 1, scale = "none")
+  out <- lisa_apply_filter(z, mask = mask, filter = f)
   expect_lt(out[3, 3, 3], 10)
   expect_gt(out[3, 3, 2], 0)
 })
 
-test_that("neuroim2 backend returns a filtered map with input dimensions", {
+test_that("LISA filter uses mask-normalized boundary handling", {
+  z <- array(0, c(3, 3, 3))
+  z[2, 2, 2] <- 7
+  mask <- array(FALSE, c(3, 3, 3))
+  mask[2, 2, 2] <- TRUE
+  f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 100,
+                      n_iter = 1, scale = "none")
+
+  out <- lisa_apply_filter(z, mask = mask, filter = f)
+  expect_equal(out[2, 2, 2], 7, tolerance = 1e-12)
+  expect_true(all(is.finite(as.numeric(out)[mask])))
+})
+
+test_that("LISA filter returns a filtered map with input dimensions", {
   skip_if_not_installed("neuroim2")
   z <- array(rnorm(27), c(3, 3, 3))
   mask <- array(TRUE, c(3, 3, 3))
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 1,
-                      n_iter = 1, boundary = "neuroim2")
-  out <- lisa_apply_filter(z, mask = mask, filter = f, backend = "neuroim2")
+                      n_iter = 1)
+  out <- lisa_apply_filter(z, mask = mask, filter = f)
   expect_equal(dim(out), dim(z))
   expect_true(all(is.finite(as.numeric(out)[mask])))
 })
@@ -82,9 +93,9 @@ test_that("lisa consumes null_spec and returns neurothresh_result", {
   null_maps <- replicate(5, array(rnorm(27), c(3, 3, 3)), simplify = FALSE)
   ns <- null_from_maps(z, null_maps)
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
+                      n_iter = 1)
   res <- lisa(stat_vol = z, mask = ns$mask, null_spec = ns,
-              filter = f, backend = "reference", tail = "pos", q = 0.5)
+              filter = f, tail = "pos", q = 0.5)
   expect_s3_class(res, "neurothresh_result")
   expect_identical(res$method, "lisa")
   expect_equal(dim(res$pvals), dim(z))
@@ -100,14 +111,13 @@ test_that("lisa keeps null_spec positional convenience but canonical n_perm wins
   z <- array(rnorm(8), c(2, 2, 2))
   ns <- null_from_maps(z, replicate(4, array(rnorm(8), c(2, 2, 2)), simplify = FALSE))
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
-  res <- lisa(ns, filter = f, backend = "reference", q = 0.5,
+                      n_iter = 1)
+  res <- lisa(ns, filter = f, q = 0.5,
               n_perm = 2, store_filtered_nulls = TRUE)
   expect_equal(res$params$n_perm, 2L)
   expect_equal(dim(res$extras$filtered_nulls), c(2L, 8L))
   expect_error(
-    lisa(stat_vol = z, null_spec = ns, n_perm = 5, filter = f,
-         backend = "reference"),
+    lisa(stat_vol = z, null_spec = ns, n_perm = 5, filter = f),
     "n_perm may not exceed null_spec\\$n_perm"
   )
 })
@@ -117,9 +127,9 @@ test_that("lisa can optionally store filtered null maps for diagnostics", {
   z <- array(rnorm(8), c(2, 2, 2))
   ns <- null_from_maps(z, replicate(3, array(rnorm(8), c(2, 2, 2)), simplify = FALSE))
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
+                      n_iter = 1)
   res <- lisa(stat_vol = z, mask = ns$mask, null_spec = ns,
-              filter = f, backend = "reference", q = 0.5,
+              filter = f, q = 0.5,
               store_filtered_nulls = TRUE)
   expect_equal(dim(res$extras$filtered_nulls), c(3L, 8L))
 })
@@ -130,9 +140,9 @@ test_that("same null_spec can feed lisa and scale_space_energy", {
   null_maps <- replicate(4, array(rnorm(27), c(3, 3, 3)), simplify = FALSE)
   ns <- null_from_maps(z, null_maps)
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
+                      n_iter = 1)
   lisa_fit <- lisa(stat_vol = z, mask = ns$mask, null_spec = ns,
-                   filter = f, backend = "reference", tail = "two", q = 0.5)
+                   filter = f, tail = "two", q = 0.5)
   ss_fit <- scale_space_energy(
     null_spec = ns,
     scales = scale_space(2, include_global = FALSE),
@@ -147,14 +157,12 @@ test_that("lisa wrappers delegate through shared null factories", {
   set.seed(13)
   imgs <- replicate(5, array(rnorm(27), c(3, 3, 3)), simplify = FALSE)
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
-  one <- lisa_onesample(imgs, n_perm = 4, seed = 1, filter = f,
-                        backend = "reference", q = 0.5)
+                      n_iter = 1)
+  one <- lisa_onesample(imgs, n_perm = 4, seed = 1, filter = f, q = 0.5)
   expect_s3_class(one, "neurothresh_result")
 
   two <- lisa_twosample(imgs, group = c("a", "a", "b", "b", "b"),
-                        n_perm = 4, seed = 2, filter = f,
-                        backend = "reference", q = 0.5)
+                        n_perm = 4, seed = 2, filter = f, q = 0.5)
   expect_s3_class(two, "neurothresh_result")
 })
 
@@ -163,7 +171,7 @@ test_that("lisa_glm delegates through null_glm", {
   imgs <- replicate(6, array(rnorm(27), c(3, 3, 3)), simplify = FALSE)
   dat <- data.frame(group = factor(rep(c("a", "b"), each = 3)))
   f <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                      n_iter = 1, boundary = "mask_normalized")
+                      n_iter = 1)
   res <- lisa_glm(
     imgs,
     design = ~ group,
@@ -173,22 +181,15 @@ test_that("lisa_glm delegates through null_glm", {
     seed = 3,
     statistic = "z",
     filter = f,
-    backend = "reference",
     q = 0.5
   )
   expect_s3_class(res, "neurothresh_result")
   expect_identical(res$params$null_kind, "glm")
 })
 
-test_that("unsupported LISA backends and lisa2018 boundary fail clearly", {
+test_that("LISA records the single production filter backend", {
   z <- array(rnorm(8), c(2, 2, 2))
   ns <- null_from_maps(z, replicate(2, array(rnorm(8), c(2, 2, 2)), simplify = FALSE))
-  expect_error(
-    lisa(ns, filter = lisa_bilateral(boundary = "lisa2018"), backend = "reference"),
-    "not implemented"
-  )
-  expect_error(
-    lisa(ns, backend = "adjoin_sparse"),
-    "planned but not implemented"
-  )
+  fit <- lisa(ns, filter = lisa_bilateral(radius = 1, n_iter = 1), n_perm = 2)
+  expect_identical(fit$params$filter_backend, "neuroim2_bilateral_mask_normalized")
 })

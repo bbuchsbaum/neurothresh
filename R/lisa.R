@@ -22,7 +22,6 @@
 #' @param monotone Whether to enforce monotone q-values over evidence strength.
 #' @param scale_n_null Number of early null maps used for fixed range-scale
 #'   estimation when `filter$scale = "sd_first_30_nulls"`.
-#' @param backend Filtering backend.
 #' @param store_filtered_nulls Whether to store the full permutation-by-voxel
 #'   filtered null matrix in `extras`. Defaults to `FALSE`; inference uses
 #'   streaming tail counts either way.
@@ -41,11 +40,9 @@ lisa <- function(stat_vol = NULL,
                  p0 = 1,
                  monotone = TRUE,
                  scale_n_null = 30L,
-                 backend = c("neuroim2", "reference", "adjoin_sparse"),
                  store_filtered_nulls = FALSE) {
   call_capture <- match.call()
   tail <- match.arg(tail)
-  backend <- match.arg(backend)
   if (is_null_spec(stat_vol) && is.null(null_spec)) {
     null_spec <- stat_vol
     stat_vol <- NULL
@@ -92,7 +89,7 @@ lisa <- function(stat_vol = NULL,
     none = 1
   )
 
-  filtered_obs <- .lisa_apply_filter(stat_vol, mask, filter, backend, range_scale = range_scale)
+  filtered_obs <- .lisa_apply_filter(stat_vol, mask, filter, range_scale = range_scale)
   obs_vec <- as.numeric(filtered_obs)[mask_idx]
 
   counter <- .lisa_fdr_counter_init(obs_vec, tail = tail)
@@ -104,7 +101,7 @@ lisa <- function(stat_vol = NULL,
   for (b in seq_len(n_perm)) {
     draw <- .coerce_null_draw(null_spec$draw(b), n_full = n_full, mask_idx = mask_idx)
     draw_vol <- .array_to_vol(draw, dims, stat_vol)
-    filt_b <- .lisa_apply_filter(draw_vol, mask, filter, backend, range_scale = range_scale)
+    filt_b <- .lisa_apply_filter(draw_vol, mask, filter, range_scale = range_scale)
     filt_vec <- as.numeric(filt_b)[mask_idx]
     counter <- .lisa_fdr_counter_update(counter, filt_vec, tail = tail)
     if (isTRUE(store_filtered_nulls)) null_mat[b, ] <- filt_vec
@@ -132,7 +129,7 @@ lisa <- function(stat_vol = NULL,
       n_perm = n_perm,
       seed = seed,
       p0 = p0,
-      backend = backend,
+      filter_backend = "neuroim2_bilateral_mask_normalized",
       filter = filter,
       null_kind = null_spec$kind,
       range_scale = range_scale,

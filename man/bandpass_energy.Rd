@@ -2,14 +2,20 @@
 % Please edit documentation in R/scale_space.R
 \name{bandpass_energy}
 \alias{bandpass_energy}
-\title{Band-Pass Local Energy Statistic Channel}
+\title{Band-Pass Energy Statistic Channel}
 \usage{
-bandpass_energy(ratio = sqrt(2))
+bandpass_energy(ratio = sqrt(2), scope = c("local", "global"))
 }
 \arguments{
 \item{ratio}{Multiplicative scale ratio around the target FWHM.}
+
+\item{scope}{\code{"local"} preserves the historical location-wise behavior;
+\code{"global"} returns one whole-map statistic per scale.}
 }
 \description{
 Explicit opt-in spatial band-pass channel using a difference of smoothers
-around the requested scale.
+around the requested scale. The local form returns a field
+\eqn{[S_{\rho/r}z(v) - S_{\rho r}z(v)]^2}. The global form returns
+\eqn{\sum_v [S_{\rho/r}z(v) - S_{\rho r}z(v)]^2}, which is the clearest
+curve for reading out the dominant spatial-frequency band.
 }

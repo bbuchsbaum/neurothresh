@@ -95,10 +95,10 @@ test_that("lisa accepts the canonical stat_vol + null_spec API", {
   z <- make_canonical_z()
   ns <- null_voxel_signflip(z, n_perm = 6, seed = 41)
   filter <- lisa_bilateral(radius = 1, sigma_space = 1, sigma_range = 2,
-                           n_iter = 1, boundary = "mask_normalized")
+                           n_iter = 1)
   res <- lisa(z, mask = ns$mask, q = 0.2, tail = "two",
               null_spec = ns, n_perm = 6, seed = 41,
-              filter = filter, backend = "reference")
+              filter = filter)
   expect_s3_class(res, "neurothresh_result")
   expect_identical(res$method, "lisa")
   expect_equal(dim(res$pvals), dim(z))
