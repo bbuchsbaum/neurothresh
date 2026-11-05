@@ -20,7 +20,6 @@ lisa(
   p0 = 1,
   monotone = TRUE,
   scale_n_null = 30L,
-  backend = c("neuroim2", "reference", "adjoin_sparse"),
   store_filtered_nulls = FALSE
 )
 ```
@@ -81,10 +80,6 @@ lisa(
 
   Number of early null maps used for fixed range-scale estimation when
   `filter$scale = "sd_first_30_nulls"`.
-
-- backend:
-
-  Filtering backend.
 
 - store_filtered_nulls:
 

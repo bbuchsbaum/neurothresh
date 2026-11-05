@@ -13,7 +13,7 @@ baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
 - [`as_subject_matrix()`](https://bbuchsbaum.github.io/neurothresh/reference/as_subject_matrix.md)
   : Coerce subject-level images to a canonical (subject by voxel) matrix
 - [`bandpass_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/bandpass_energy.md)
-  : Band-Pass Local Energy Statistic Channel
+  : Band-Pass Energy Statistic Channel
 - [`bbox_from_indices()`](https://bbuchsbaum.github.io/neurothresh/reference/bbox_from_indices.md)
   : Compute bounding box from mask-space indices
 - [`canonicalize()`](https://bbuchsbaum.github.io/neurothresh/reference/canonicalize.md)
@@ -32,6 +32,10 @@ baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
   : Generate null distribution via sign-flipping
 - [`generate_null_scores_parcels()`](https://bbuchsbaum.github.io/neurothresh/reference/generate_null_scores_parcels.md)
   : Generate null scores for parcel-level analysis
+- [`global_band_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/global_band_energy.md)
+  : Global Band-Pass Energy Statistic Channel
+- [`global_lowpass_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/global_lowpass_energy.md)
+  : Global Low-Pass Energy Statistic Channel
 - [`hier_scan()`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)
   : Hierarchical LR-MFT Analysis
 - [`hierarchical`](https://bbuchsbaum.github.io/neurothresh/reference/hierarchical.md)
@@ -60,6 +64,8 @@ baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
   : LISA two-sample wrapper
 - [`local_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/local_energy.md)
   : Local Energy Statistic Channel
+- [`lowpass_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/lowpass_energy.md)
+  : Low-Pass Energy Statistic Channel
 - [`make_null_fun_glm()`](https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_glm.md)
   : GLM Freedman-Lane Null Generator
 - [`make_null_fun_onesample()`](https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_onesample.md)
@@ -130,6 +136,8 @@ baseline implementations (RFT, TFCE, cluster-FDR) for comparison.
   : Simulation Study: Resampling Choice and Null Rejection Rates
 - [`scale_space()`](https://bbuchsbaum.github.io/neurothresh/reference/scale_space.md)
   : Define a Gaussian Scale-Space Grid
+- [`scale_space_diagnostics()`](https://bbuchsbaum.github.io/neurothresh/reference/scale_space_diagnostics.md)
+  : Diagnose Scale-Space Evidence Curves
 - [`scale_space_energy()`](https://bbuchsbaum.github.io/neurothresh/reference/scale_space_energy.md)
   : Scale-Space Localized Energy Inference
 - [`scale_space_onesample()`](https://bbuchsbaum.github.io/neurothresh/reference/scale_space_onesample.md)

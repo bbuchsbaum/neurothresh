@@ -14,6 +14,7 @@ Permutation cluster p-values
   seed,
   null_fun,
   n_full,
-  mask_idx
+  mask_idx,
+  tail = "pos"
 )
 ```

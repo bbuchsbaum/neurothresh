@@ -26,9 +26,9 @@ the q-value map and rejection mask come back in a single
 ``` r
 
 ns <- null_from_maps(z, nulls)
-filt <- lisa_bilateral(radius = 1, n_iter = 1, boundary = "mask_normalized")
+filt <- lisa_bilateral(radius = 1, n_iter = 1)
 fit <- lisa(stat_vol = ns$stat_vol, mask = ns$mask, null_spec = ns,
-            filter = filt, backend = "reference",
+            filter = filt,
             tail = "pos", q = 0.10)
 fit
 #> <neurothresh_result>
@@ -57,7 +57,7 @@ LISA has four objects you compose:
 | Object | Built by | Role |
 |:---|:---|:---|
 | `neurothresh_null_spec` | [`null_from_maps()`](https://bbuchsbaum.github.io/neurothresh/reference/null_from_maps.md), [`null_one_sample()`](https://bbuchsbaum.github.io/neurothresh/reference/null_one_sample.md), [`null_two_sample()`](https://bbuchsbaum.github.io/neurothresh/reference/null_two_sample.md), [`null_glm()`](https://bbuchsbaum.github.io/neurothresh/reference/null_glm.md), … | Bundles the observed map, mask, and a deterministic-by-index draw function |
-| `neurothresh_lisa_filter` | [`lisa_bilateral()`](https://bbuchsbaum.github.io/neurothresh/reference/lisa_bilateral.md) | Specifies radius, range/space sigmas, boundary handling, iterations |
+| `neurothresh_lisa_filter` | [`lisa_bilateral()`](https://bbuchsbaum.github.io/neurothresh/reference/lisa_bilateral.md) | Specifies radius, range/space sigmas, and iterations |
 | inference call | `lisa(stat_vol, mask, null_spec, filter, ...)` | Filters the observed map and every null draw, then runs FDR in filtered space |
 | `neurothresh_result` | returned by [`lisa()`](https://bbuchsbaum.github.io/neurothresh/reference/lisa.md) | Method-tagged object with `pvals` (q-values), `reject`, and `extras$filtered_stat` |
 
@@ -82,21 +82,23 @@ The filter has two scales:
   edge-preserving).
 
 `radius` caps the neighbourhood at ±r voxels. `n_iter > 1` re-applies
-the filter, sharpening edges. `boundary = "mask_normalized"` re-weights
-at the mask border so edge voxels are not dragged toward zero.
+the filter, sharpening edges. LISA uses
+[`neuroim2::bilateral_filter()`](https://bbuchsbaum.github.io/neuroim2/reference/bilateral_filter.html),
+whose neighborhoods are mask-normalized by default, so edge voxels are
+not dragged toward out-of-mask or out-of-bounds zeros.
 
 ``` r
 
 filters <- list(
   tight   = lisa_bilateral(radius = 1, sigma_space = 0.7, sigma_range = 1,
-                            n_iter = 1, boundary = "mask_normalized"),
-  default = lisa_bilateral(radius = 1, n_iter = 1, boundary = "mask_normalized"),
+                            n_iter = 1),
+  default = lisa_bilateral(radius = 1, n_iter = 1),
   loose   = lisa_bilateral(radius = 1, sigma_space = 1.5, sigma_range = 4,
-                            n_iter = 1, boundary = "mask_normalized")
+                            n_iter = 1)
 )
 filtered <- lapply(filters, function(f) {
   fit_f <- lisa(stat_vol = ns$stat_vol, mask = ns$mask, null_spec = ns,
-                filter = f, backend = "reference", tail = "pos", q = 0.10)
+                filter = f, tail = "pos", q = 0.10)
   as.numeric(lisa_filtered_stat(fit_f))
 })
 ```
@@ -115,7 +117,7 @@ When you have subject-level images, the
 [`lisa_onesample()`](https://bbuchsbaum.github.io/neurothresh/reference/lisa_onesample.md)
 wrapper builds the null spec for you using
 [`null_one_sample()`](https://bbuchsbaum.github.io/neurothresh/reference/null_one_sample.md).
-The same `tail`, `q`, `filter`, and `backend` arguments flow through.
+The same `tail`, `q`, `filter`, and storage arguments flow through.
 
 ``` r
 
@@ -124,9 +126,7 @@ one <- lisa_onesample(
   imgs,
   n_perm = 24,
   seed = 1,
-  filter = lisa_bilateral(radius = 1, n_iter = 1,
-                          boundary = "mask_normalized"),
-  backend = "reference",
+  filter = lisa_bilateral(radius = 1, n_iter = 1),
   tail = "pos",
   q = 0.20
 )
@@ -157,9 +157,7 @@ disk):
 ns_ext <- null_from_maps(z, nulls)
 fit_ext <- lisa(stat_vol = ns_ext$stat_vol, mask = ns_ext$mask,
                 null_spec = ns_ext,
-                filter = lisa_bilateral(radius = 1, n_iter = 1,
-                                        boundary = "mask_normalized"),
-                backend = "reference", tail = "pos", q = 0.10)
+                filter = lisa_bilateral(radius = 1, n_iter = 1), tail = "pos", q = 0.10)
 sum(fit_ext$reject)
 #> [1] 72
 ```
@@ -182,12 +180,18 @@ sse <- scale_space_energy(
   n_perm = ns$n_perm
 )
 summary(sse)
-#>   scale_index channel_index scale_type fwhm_mm              channel      min_p
-#> 1           1             1   gaussian       2 signed_coherence_two 0.01639344
-#> 2           2             1   identity       0 signed_coherence_two 0.01639344
-#>   max_stat any_supported n_supported effective_basis
-#> 1 7.440220          TRUE          77             125
-#> 2 7.269869          TRUE          64            1000
+#>   scale_index channel_index scale_type fwhm_mm              channel
+#> 1           1             1   gaussian       2 signed_coherence_two
+#> 2           2             1   identity       0 signed_coherence_two
+#>                channel_role channel_scope frequency_readout      min_p max_stat
+#> 1 signed low-pass coherence         local             FALSE 0.01639344 7.440220
+#> 2 signed low-pass coherence         local             FALSE 0.01639344 7.269869
+#>   any_supported n_supported effective_basis     p_fwer scale_label
+#> 1          TRUE          77             125 0.01639344        2 mm
+#> 2          TRUE          64            1000 0.01639344       voxel
+#>                                              curve_use
+#> 1 signed low-pass coherence; opposite signs can cancel
+#> 2 signed low-pass coherence; opposite signs can cancel
 ```
 
 This is the canonical neurothresh contract in action: build the null
@@ -226,13 +230,15 @@ distribution at a voxel — pass `store_filtered_nulls = TRUE`. Only do
 this on small runs; the full filtered-null matrix is
 `n_perm × sum(mask)`.
 
-## Backend notes
+## Implementation note
 
-| Backend | When to use |
-|:---|:---|
-| `"reference"` (default in tests) | Mask-aware, slower; use for small volumes, debugging, or when boundary semantics matter |
-| `"neuroim2"` | Adapts [`neuroim2::bilateral_filter()`](https://bbuchsbaum.github.io/neuroim2/reference/bilateral_filter.html); fastest path, but uses neuroim2’s boundary convention |
-| `"adjoin_sparse"` | Reserved; not enabled because bilateral weights are statistic-dependent and must be rebuilt per draw |
+LISA has one filtering implementation:
+[`neuroim2::bilateral_filter()`](https://bbuchsbaum.github.io/neuroim2/reference/bilateral_filter.html)
+from neuroim2 0.16.0 or later. Its neighborhoods are mask-normalized by
+default. When `filter$scale = "sd_first_30_nulls"`, the range scale is
+estimated from early null maps and passed as `range_scale`, so the
+observed map and every null draw use the same intensity bandwidth. This
+is the synchronized filtering contract needed for LISA-style inference.
 
 Filter weights depend on each statistic map (the bilateral kernel uses
 the voxel values themselves), so there is no shared weight matrix to

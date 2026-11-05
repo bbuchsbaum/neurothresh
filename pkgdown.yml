@@ -1,12 +1,12 @@
 pandoc: 3.8.3
-pkgdown: 2.2.0
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   lisa-local-adaptive-inference: lisa-local-adaptive-inference.html
   neurothresh: neurothresh.html
   scale-space-localized-energy: scale-space-localized-energy.html
   simulation-validation: simulation-validation.html
-last_built: 2026-05-10T21:24Z
+last_built: 2026-11-05T21:13Z
 urls:
   reference: https://bbuchsbaum.github.io/neurothresh/reference
   article: https://bbuchsbaum.github.io/neurothresh/articles

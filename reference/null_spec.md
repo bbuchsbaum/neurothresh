@@ -1,9 +1,12 @@
 # Null specification S3 class
 
-A `neurothresh_null_spec` is the uniform handle every permutation-based
-inference method consumes. It bundles the observed (canonicalized)
-statistic map, the mask used to build the null, a deterministic-by-index
-draw function, and metadata describing the resampling design.
+A `neurothresh_null_spec` is the common handle for supported
+permutation-based inference methods.
+[`hier_scan()`](https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.md)
+does not yet support supplied nulls. It bundles the observed
+(canonicalized) statistic map, the mask used to build the null, a
+deterministic-by-index draw function, and metadata describing the
+resampling design.
 
 ## Details
 

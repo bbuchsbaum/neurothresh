@@ -161,7 +161,9 @@ A list with components:
 
 - params:
 
-  List of run parameters.
+  List of run parameters. `null` identifies the source used:
+  `null_spec$kind`, `"custom"` for a bare `null_fun`, or the selected
+  fallback `null` method.
 
 ## Details
 

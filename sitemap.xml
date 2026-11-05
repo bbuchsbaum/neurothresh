@@ -42,6 +42,8 @@
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/fwer_threshold_from_maxnull.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/generate_null_scores.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/generate_null_scores_parcels.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/neurothresh/reference/global_band_energy.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/neurothresh/reference/global_lowpass_energy.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/hier_descend.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/hier_descend_alpha.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/hier_scan.html</loc></url>
@@ -59,6 +61,7 @@
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/lisa_onesample.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/lisa_twosample.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/local_energy.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/neurothresh/reference/lowpass_energy.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_glm.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_onesample.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/make_null_fun_subject_signflip.html</loc></url>
@@ -97,6 +100,7 @@
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/rft_peak_fwer.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/run_resampling_fwer_study.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/scale_space.html</loc></url>
+<url><loc>https://bbuchsbaum.github.io/neurothresh/reference/scale_space_diagnostics.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/scale_space_energy.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/scale_space_onesample.html</loc></url>
 <url><loc>https://bbuchsbaum.github.io/neurothresh/reference/scale_space_twosample.html</loc></url>

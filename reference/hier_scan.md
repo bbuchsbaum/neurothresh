@@ -69,7 +69,12 @@ hier_scan(
 
 - null_spec:
 
-  Reserved null specification argument for API consistency.
+  Reserved; must be `NULL`. Supplied specifications are not supported
+  and cause an error. Use
+  [`octree_scan_fwer()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_fwer.md)
+  or
+  [`octree_scan_stepdown()`](https://bbuchsbaum.github.io/neurothresh/reference/octree_scan_stepdown.md)
+  to calibrate an octree scan with a supplied null.
 
 - n_perm:
 

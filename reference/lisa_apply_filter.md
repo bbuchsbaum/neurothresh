@@ -12,7 +12,6 @@ lisa_apply_filter(
   stat_vol,
   mask = NULL,
   filter = lisa_bilateral(),
-  backend = c("neuroim2", "reference", "adjoin_sparse"),
   range_scale = NULL
 )
 ```
@@ -32,13 +31,10 @@ lisa_apply_filter(
   A LISA filter specification from
   [`lisa_bilateral()`](https://bbuchsbaum.github.io/neurothresh/reference/lisa_bilateral.md).
 
-- backend:
-
-  Filtering backend: `"neuroim2"` or `"reference"`.
-
 - range_scale:
 
-  Optional fixed range scale for the reference backend.
+  Optional fixed range scale. If `NULL`, the filter uses the map's
+  masked standard deviation.
 
 ## Value
 

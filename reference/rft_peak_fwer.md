@@ -35,9 +35,9 @@ rft_peak_fwer(
 
 - tail:
 
-  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, the test runs both
-  directions at the full `alpha` and rejects on the union (matching the
-  behaviour of the previous `rft_fwer_twosided()` helper).
+  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, each direction uses
+  `alpha / 2` and the union is reported, targeting FWER `alpha` across
+  both tails.
 
 - smoothness:
 

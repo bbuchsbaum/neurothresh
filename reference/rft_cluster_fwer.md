@@ -36,9 +36,9 @@ rft_cluster_fwer(
 
 - tail:
 
-  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, the test runs both
-  directions at the full `alpha` and rejects on the union (matching the
-  behaviour of the previous `rft_fwer_twosided()` helper).
+  One of `"pos"`, `"neg"`, `"two"`. For `"two"`, each direction uses
+  `alpha / 2` and the union is reported, targeting FWER `alpha` across
+  both tails.
 
 - cluster_thresh:
 
@@ -67,8 +67,15 @@ per-cluster table (id, size, p_unc, p_fwer, significant). `threshold` is
 
 First thresholds at `cluster_thresh` to form clusters, then tests each
 cluster's extent against the RFT null distribution. For `tail = "two"`,
-the analysis runs separately on positive and negative tails and the
-union of significant clusters is reported.
+the analysis runs separately on positive and negative tails at
+`alpha / 2` and the union of significant clusters is reported. The
+reported `p_fwer` values are doubled (capped at 1) to describe the
+combined family; `p_unc` remains the one-tail cluster-extent
+probability.
+
+Extent probabilities use a three-dimensional, high-threshold Gaussian
+approximation in dimensionless resels. This is an asymptotic baseline;
+changing physical units does not change its probabilities.
 
 ## See also
 
