@@ -6,6 +6,25 @@ This release regularises every public inference method behind a single
 canonical signature. The plan and motivation live in
 `specs/api-consistency-plan.md`.
 
+### Inference fixes
+
+- Negative-tail permutation cluster FDR now transforms null draws in the same
+  direction as the observed map (#1). Two-sided pooled BH also paints the
+  significant clusters into the returned rejection mask correctly.
+- Two-sided RFT uses half of alpha per tail. Cluster FWER p-values describe the
+  combined family (#2).
+- `hier_scan()` rejects a supplied `null_spec` until both its parcel and descent
+  calibration support it. Use `octree_scan_fwer()` or `octree_scan_stepdown()`
+  for scans with a supplied null (#3).
+- Subject-level t-to-Z conversion preserves sign symmetry and uses log tails
+  for extreme statistics (#4). Null validation rejects nonfinite draws (#5).
+- LISA batch and streaming FDR use exact sorted tail counts, retaining ties and
+  the existing q-value rule while avoiding quadratic scans per null map (#6).
+- RFT cluster extents use a shared high-threshold Gaussian approximation in
+  resel units, removing an extra physical FWHM factor from both cluster methods
+  (#7). This fixes unit invariance; it does not establish empirical calibration.
+- Both octree scan results record the null design actually consumed (#8).
+
 ### One stat-map name
 
 Every inference method takes its observed map as the **first positional
@@ -34,8 +53,9 @@ follows from `tail = "two"`.
 
 ### One null seam
 
-A new S3 class `neurothresh_null_spec` is the uniform handle every
-permutation-based method consumes. Build it with one of the design-named
+A new S3 class `neurothresh_null_spec` is the common handle for supported
+permutation-based methods. `hier_scan()` currently requires it to be `NULL`.
+Build it with one of the design-named
 factories:
 
 ```r

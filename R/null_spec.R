@@ -1,7 +1,8 @@
 #' Null specification S3 class
 #'
-#' A `neurothresh_null_spec` is the uniform handle every permutation-based
-#' inference method consumes. It bundles the observed (canonicalized)
+#' A `neurothresh_null_spec` is the common handle for supported permutation-based
+#' inference methods. `hier_scan()` does not yet support supplied nulls.
+#' It bundles the observed (canonicalized)
 #' statistic map, the mask used to build the null, a deterministic-by-index
 #' draw function, and metadata describing the resampling design.
 #'
@@ -138,6 +139,9 @@ validate_null_spec <- function(ns) {
       "draw(1) returned length %d (expected %d, the mask size)",
       length(test), n_mask
     ))
+  }
+  if (any(!is.finite(test))) {
+    stop("draw(1) returned non-finite values; expected a finite numeric vector")
   }
   invisible(ns)
 }

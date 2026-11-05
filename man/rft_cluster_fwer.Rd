@@ -24,9 +24,9 @@ t-statistics or -log10(p) maps).}
 
 \item{alpha}{Significance level (default 0.05).}
 
-\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, the test runs
-both directions at the full \code{alpha} and rejects on the union (matching
-the behaviour of the previous \code{rft_fwer_twosided()} helper).}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, each direction
+uses \code{alpha / 2} and the union is reported, targeting FWER \code{alpha}
+across both tails.}
 
 \item{cluster_thresh}{Cluster-forming threshold on the Z scale.}
 
@@ -49,7 +49,13 @@ cluster extent distribution.
 First thresholds at \code{cluster_thresh} to form clusters, then
 tests each cluster's extent against the RFT null distribution. For
 \code{tail = "two"}, the analysis runs separately on positive and negative
-tails and the union of significant clusters is reported.
+tails at \code{alpha / 2} and the union of significant clusters is reported.
+The reported \code{p_fwer} values are doubled (capped at 1) to describe the
+combined family; \code{p_unc} remains the one-tail cluster-extent probability.
+
+Extent probabilities use a three-dimensional, high-threshold Gaussian
+approximation in dimensionless resels. This is an asymptotic baseline;
+changing physical units does not change its probabilities.
 }
 \seealso{
 \code{\link[=rft_peak_fwer]{rft_peak_fwer()}}, \code{\link[=cluster_fdr]{cluster_fdr()}}.

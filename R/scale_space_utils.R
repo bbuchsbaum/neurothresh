@@ -288,16 +288,11 @@ as_subject_matrix <- function(x, mask = NULL, template = NULL, ...) {
 
 #' @keywords internal
 .ss_t_to_z <- function(t, df, two_sided = FALSE) {
-  if (two_sided) {
-    p <- 2 * stats::pt(abs(t), df = df, lower.tail = FALSE)
-    p <- pmin(pmax(p, .Machine$double.xmin), 1 - .Machine$double.eps)
-    z <- stats::qnorm(p / 2, lower.tail = FALSE)
-    sign(t) * z
-  } else {
-    p <- stats::pt(t, df = df, lower.tail = FALSE)
-    p <- pmin(pmax(p, .Machine$double.xmin), 1 - .Machine$double.eps)
-    stats::qnorm(p, lower.tail = FALSE)
-  }
+  # A signed Z-equivalent is the same for either tail convention. Work with
+  # the absolute upper log-tail to avoid cancellation at large negative t
+  # and underflow at large positive t; t = 0 maps exactly to Z = 0.
+  log_p <- stats::pt(abs(t), df = df, lower.tail = FALSE, log.p = TRUE)
+  sign(t) * stats::qnorm(log_p, lower.tail = FALSE, log.p = TRUE)
 }
 
 #' @keywords internal

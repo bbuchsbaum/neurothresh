@@ -23,9 +23,9 @@ t-statistics or -log10(p) maps).}
 
 \item{alpha}{Significance level (default 0.05).}
 
-\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, the test runs
-both directions at the full \code{alpha} and rejects on the union (matching
-the behaviour of the previous \code{rft_fwer_twosided()} helper).}
+\item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"}, each direction
+uses \code{alpha / 2} and the union is reported, targeting FWER \code{alpha}
+across both tails.}
 
 \item{smoothness}{A \code{\link[=smoothness_fwhm]{smoothness_fwhm()}} object specifying field
 smoothness in millimetres. Numeric input is also accepted (length 1 or

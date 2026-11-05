@@ -48,7 +48,9 @@ or vector of values to search over.}
 \item{prior_eta}{Mixing weight for prior smoothing with uniform mass.
 Values in [0, 1], where 0 is uniform and 1 is the raw prior.}
 
-\item{null_spec}{Reserved null specification argument for API consistency.}
+\item{null_spec}{Reserved; must be \code{NULL}. Supplied specifications are not
+supported and cause an error. Use \code{\link[=octree_scan_fwer]{octree_scan_fwer()}} or
+\code{\link[=octree_scan_stepdown]{octree_scan_stepdown()}} to calibrate an octree scan with a supplied null.}
 
 \item{n_perm}{Number of permutations for null distribution (default 1000)}
 

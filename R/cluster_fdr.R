@@ -157,7 +157,7 @@ cluster_fdr <- function(stat_vol, mask = NULL,
   } else {
     p_unc <- .cluster_pvals_perm(
       dims, mask, cluster_thresh, clusters, n_perm, seed,
-      draw_fun, n, mask_idx
+      draw_fun, n, mask_idx, tail
     )
   }
 
@@ -237,8 +237,8 @@ cluster_fdr <- function(stat_vol, mask = NULL,
       pos_table$significant <- rej_pos
       neg_table$significant <- rej_neg
 
-      pos_labels <- if (!is.null(pos$extras$cluster_labels)) pos$extras$cluster_labels else NULL
-      neg_labels <- if (!is.null(neg$extras$cluster_labels)) neg$extras$cluster_labels else NULL
+      pos_labels <- pos$cluster_labels
+      neg_labels <- neg$cluster_labels
 
       sig_pos <- mask & FALSE
       if (!is.null(pos_labels)) {
@@ -290,23 +290,20 @@ cluster_fdr <- function(stat_vol, mask = NULL,
   if (length(fwhm_mm) == 1) fwhm_mm <- rep(fwhm_mm, 3)
 
   s_resel <- sizes * prod(vox_size) / prod(fwhm_mm)
-  c_const <- prod(fwhm_mm) * (2 * pi / u0)^(3 / 2) *
-    (4 * log(2))^(-3 / 2) / gamma(5 / 2)
-
-  p_unc <- exp(-u0 * (s_resel / c_const)^(2 / 3))
-  pmin(pmax(p_unc, 0), 1)
+  .rft_cluster_extent_tail(s_resel, u0)
 }
 
 #' Permutation cluster p-values
 #' @keywords internal
 .cluster_pvals_perm <- function(dims, mask, u0, obs_clusters, n_perm, seed,
-                                null_fun, n_full, mask_idx) {
+                                null_fun, n_full, mask_idx, tail = "pos") {
   if (!is.null(seed)) set.seed(seed)
   obs_sizes <- obs_clusters$sizes
 
   null_sizes <- numeric(0)
   for (b in seq_len(n_perm)) {
     z_perm <- .coerce_null_draw(null_fun(b), n_full = n_full, mask_idx = mask_idx)
+    if (tail == "neg") z_perm <- -z_perm
     supra <- (z_perm >= u0) & mask
     perm_clusters <- .find_clusters(supra, dims)
     if (length(perm_clusters$sizes) > 0) {

@@ -91,12 +91,17 @@ test_that("two-sided wrappers return unions of one-sided results", {
   set.seed(1)
   z <- array(rnorm(8 * 8 * 8), dim = c(8, 8, 8))
 
-  # RFT two-sided: tail="two" matches union of one-sided tails
+  # RFT two-sided: tail="two" matches union of tails at half alpha.
   s8 <- smoothness_fwhm(8)
+  # Include values between the one- and two-tail cutoffs, and above both.
+  low <- rft_peak_fwer(z, smoothness = s8, alpha = 0.1)$threshold
+  high <- rft_peak_fwer(z, smoothness = s8, alpha = 0.05)$threshold
+  z[1:4] <- c((low + high) / 2, -(low + high) / 2, high + 1, -high - 1)
   tw <- rft_peak_fwer(z, smoothness = s8, alpha = 0.1, tail = "two")
-  pos <- rft_peak_fwer(z, smoothness = s8, alpha = 0.1, tail = "pos")
-  neg <- rft_peak_fwer(z, smoothness = s8, alpha = 0.1, tail = "neg")
+  pos <- rft_peak_fwer(z, smoothness = s8, alpha = 0.05, tail = "pos")
+  neg <- rft_peak_fwer(z, smoothness = s8, alpha = 0.05, tail = "neg")
   expect_identical(as.logical(tw$reject), as.logical(pos$reject) | as.logical(neg$reject))
+  expect_identical(as.logical(tw$reject)[1:4], c(FALSE, FALSE, TRUE, TRUE))
 
   # TFCE two-sided: reject equals reject_pos | reject_neg
   ns_tf <- null_voxel_signflip(z, n_perm = 10, seed = 1)

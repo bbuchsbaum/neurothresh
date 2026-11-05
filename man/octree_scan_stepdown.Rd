@@ -103,7 +103,9 @@ A list with components:
 \item{selected}{Data frame of selected nodes per \code{report}.}
 \item{sig_mask}{Logical mask volume for \code{selected} nodes.}
 \item{sig_indices}{1-based linear indices into \code{z_vol} for \code{sig_mask}.}
-\item{params}{Run parameters.}
+\item{params}{Run parameters. \code{null} identifies the source used:
+\code{null_spec$kind}, \code{"custom"} for a bare \code{null_fun}, or the selected
+fallback \code{null} method.}
 }
 }
 \description{

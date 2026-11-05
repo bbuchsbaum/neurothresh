@@ -41,15 +41,11 @@ lisa_fdr_map <- function(filtered_obs,
 
   ord <- order(obs_score, decreasing = TRUE)
   score_ord <- obs_score[ord]
-  raw_ord <- numeric(length(score_ord))
   n0 <- length(null_score)
   nmix <- length(obs_score)
-  for (i in seq_along(score_ord)) {
-    s <- score_ord[i]
-    p_null <- sum(null_score >= s) / n0
-    p_mix <- sum(obs_score >= s) / nmix
-    raw_ord[i] <- min(1, p0 * p_null / max(p_mix, .Machine$double.eps))
-  }
+  p_null <- .lisa_count_ge(null_score, score_ord) / n0
+  p_mix <- .lisa_count_ge(obs_score, score_ord) / nmix
+  raw_ord <- pmin(1, p0 * p_null / pmax(p_mix, .Machine$double.eps))
   q_ord <- if (isTRUE(monotone)) rev(cummin(rev(raw_ord))) else raw_ord
   fdr <- numeric(length(obs_score))
   fdr[ord] <- pmin(1, pmax(0, q_ord))
@@ -91,6 +87,13 @@ lisa_fdr_map <- function(filtered_obs,
          two = abs(x))
 }
 
+#' @noRd
+.lisa_count_ge <- function(x, thresholds) {
+  # left.open counts values strictly below each threshold, retaining every tie
+  # in the >= tail. Sort once rather than scanning all voxels per threshold.
+  length(x) - findInterval(thresholds, sort(x), left.open = TRUE)
+}
+
 #' @keywords internal
 .lisa_fdr_counter_init <- function(filtered_obs, tail) {
   obs <- as.numeric(filtered_obs)
@@ -98,7 +101,7 @@ lisa_fdr_map <- function(filtered_obs,
   obs_score <- .lisa_tail_score(obs, tail)
   ord <- order(obs_score, decreasing = TRUE)
   score_ord <- obs_score[ord]
-  mix_counts <- vapply(score_ord, function(s) sum(obs_score >= s), numeric(1))
+  mix_counts <- .lisa_count_ge(obs_score, score_ord)
   list(
     obs_score = obs_score,
     ord = ord,
@@ -114,7 +117,7 @@ lisa_fdr_map <- function(filtered_obs,
   null_score <- .lisa_tail_score(as.numeric(filtered_null), tail)
   if (any(!is.finite(null_score))) stop("filtered null map contains non-finite values")
   counter$null_counts <- counter$null_counts +
-    vapply(counter$score_ord, function(s) sum(null_score >= s), numeric(1))
+    .lisa_count_ge(null_score, counter$score_ord)
   counter$null_total <- counter$null_total + length(null_score)
   counter
 }

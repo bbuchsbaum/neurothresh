@@ -71,7 +71,9 @@
 #'     \item{selected}{Data frame of selected nodes per \code{report}.}
 #'     \item{sig_mask}{Logical mask volume for \code{selected} nodes.}
 #'     \item{sig_indices}{1-based linear indices into \code{z_vol} for \code{sig_mask}.}
-#'     \item{params}{Run parameters.}
+#'     \item{params}{Run parameters. `null` identifies the source used:
+#'       `null_spec$kind`, `"custom"` for a bare `null_fun`, or the selected
+#'       fallback `null` method.}
 #'   }
 #'
 #' @seealso
@@ -103,6 +105,7 @@ octree_scan_stepdown <- function(stat_vol,
   null <- match.arg(null)
   tail <- match.arg(tail)
   call_capture <- match.call()
+  null_kind <- if (!is.null(null_fun)) "custom" else null
 
   if (!is.null(two_sided) && isTRUE(two_sided) && tail == "pos") tail <- "two"
   if (!is.null(null_spec)) {
@@ -118,6 +121,7 @@ octree_scan_stepdown <- function(stat_vol,
                    n_perm, null_spec$n_perm))
     }
     null_fun <- null_spec$draw
+    null_kind <- null_spec$kind
   } else if (is.null(n_perm)) {
     n_perm <- 1000L
   }
@@ -250,7 +254,7 @@ octree_scan_stepdown <- function(stat_vol,
     clusters = selected,
     params = list(
       alpha = alpha, tail = tail,
-      n_perm = n_perm, null = null,
+      n_perm = n_perm, null = null_kind,
       fwhm_vox = fwhm_vox, fwhm_mm = fwhm_mm,
       gamma = gamma, min_voxels = min_voxels,
       min_alpha = min_alpha, report = report

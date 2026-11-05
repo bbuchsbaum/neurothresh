@@ -18,9 +18,9 @@ NULL
 #' @param mask Optional logical 3D mask. Defaults to finite voxels in
 #'   `stat_vol`.
 #' @param alpha Significance level (default 0.05).
-#' @param tail One of `"pos"`, `"neg"`, `"two"`. For `"two"`, the test runs
-#'   both directions at the full `alpha` and rejects on the union (matching
-#'   the behaviour of the previous `rft_fwer_twosided()` helper).
+#' @param tail One of `"pos"`, `"neg"`, `"two"`. For `"two"`, each direction
+#'   uses `alpha / 2` and the union is reported, targeting FWER `alpha`
+#'   across both tails.
 #' @param smoothness A [`smoothness_fwhm()`] object specifying field
 #'   smoothness in millimetres. Numeric input is also accepted (length 1 or
 #'   3, mm) and coerced internally.
@@ -63,7 +63,8 @@ rft_peak_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
   n_voxels <- sum(mask)
   if (n_voxels == 0L) stop("No valid voxels in mask")
 
-  threshold <- .rft_peak_threshold(dims, fwhm_mm, vox_size, n_voxels, alpha, df)
+  alpha_tail <- if (tail == "two") alpha / 2 else alpha
+  threshold <- .rft_peak_threshold(dims, fwhm_mm, vox_size, n_voxels, alpha_tail, df)
 
   z <- as.numeric(stat_vol)
   reject_vec <- switch(tail,
@@ -104,7 +105,13 @@ rft_peak_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
 #' @details First thresholds at `cluster_thresh` to form clusters, then
 #' tests each cluster's extent against the RFT null distribution. For
 #' `tail = "two"`, the analysis runs separately on positive and negative
-#' tails and the union of significant clusters is reported.
+#' tails at `alpha / 2` and the union of significant clusters is reported.
+#' The reported `p_fwer` values are doubled (capped at 1) to describe the
+#' combined family; `p_unc` remains the one-tail cluster-extent probability.
+#'
+#' Extent probabilities use a three-dimensional, high-threshold Gaussian
+#' approximation in dimensionless resels. This is an asymptotic baseline;
+#' changing physical units does not change its probabilities.
 #'
 #' @seealso [rft_peak_fwer()], [cluster_fdr()].
 #' @export
@@ -146,9 +153,9 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
   }
 
   pos_res <- .rft_cluster_one_tail(stat_vol, mask, dims, fwhm_mm, vox_size,
-                                    cluster_thresh, alpha, "pos")
+                                    cluster_thresh, alpha / 2, "pos")
   neg_res <- .rft_cluster_one_tail(stat_vol, mask, dims, fwhm_mm, vox_size,
-                                    cluster_thresh, alpha, "neg")
+                                    cluster_thresh, alpha / 2, "neg")
   reject <- array(as.logical(pos_res$reject) | as.logical(neg_res$reject),
                   dim = dims)
 
@@ -160,6 +167,7 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
     neg_tab$cluster_id <- neg_tab$cluster_id + nrow(pos_tab)
   }
   table <- rbind(pos_tab, neg_tab)
+  table$p_fwer <- pmin(1, 2 * table$p_fwer)
 
   new_neurothresh_result(
     method = "rft_cluster_fwer",
@@ -219,9 +227,7 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
 
   s_resel <- clusters$sizes * prod(vox_size) / prod(fwhm_mm)
   u0 <- cluster_thresh
-  c_const <- prod(fwhm_mm) * (2 * pi / u0)^(3 / 2) *
-    (4 * log(2))^(-3 / 2) / gamma(5 / 2)
-  p_unc <- exp(-u0 * (s_resel / c_const)^(2 / 3))
+  p_unc <- .rft_cluster_extent_tail(s_resel, u0)
   EK <- .rft_expected_ec_gaussian(u0, dims = dims, fwhm_mm = fwhm_mm,
                                    vox_size = vox_size)
   p_fwer <- pmin(1, EK * p_unc)
@@ -242,6 +248,18 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
   }
 
   list(reject = array(reject_vec, dim = dims), table = table)
+}
+
+#' @noRd
+.rft_cluster_extent_tail <- function(size_resels, u) {
+  # Nosko's 3D high-threshold extent approximation (Friston et al., 1994,
+  # Assessing the significance of focal activations using their spatial extent).
+  # E[K] ~ (2*pi)^(3/2) / ((4*log(2))^(3/2) * u^3), in resels.
+  # beta = (Gamma(5/2) / E[K])^(2/3); P(K >= k) ~ exp(-beta*k^(2/3)).
+  # The extent has already been converted to resels: no physical FWHM factor
+  # belongs in beta. This retains the existing high-u approximation.
+  beta <- gamma(5 / 2)^(2 / 3) * (4 * log(2)) * u^2 / (2 * pi)
+  exp(-beta * size_resels^(2 / 3))
 }
 
 #' @keywords internal

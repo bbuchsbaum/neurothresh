@@ -89,7 +89,9 @@ A list with components:
 \item{nodes}{Data frame of all non-empty dyadic nodes with columns
 \code{level,i,j,k,score,scale,x0,x1,y0,y1,z0,z1}.}
 \item{sig_nodes}{Subset of \code{nodes} with \code{score > u}.}
-\item{params}{List of run parameters.}
+\item{params}{List of run parameters. \code{null} identifies the source used:
+\code{null_spec$kind}, \code{"custom"} for a bare \code{null_fun}, or the selected
+fallback \code{null} method.}
 }
 }
 \description{

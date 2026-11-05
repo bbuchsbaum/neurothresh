@@ -57,7 +57,9 @@
 #'     \item{nodes}{Data frame of all non-empty dyadic nodes with columns
 #'       \code{level,i,j,k,score,scale,x0,x1,y0,y1,z0,z1}.}
 #'     \item{sig_nodes}{Subset of \code{nodes} with \code{score > u}.}
-#'     \item{params}{List of run parameters.}
+#'     \item{params}{List of run parameters. `null` identifies the source used:
+#'       `null_spec$kind`, `"custom"` for a bare `null_fun`, or the selected
+#'       fallback `null` method.}
 #'   }
 #'
 #' @details
@@ -110,6 +112,7 @@ octree_scan_fwer <- function(stat_vol,
   null <- match.arg(null)
   tail <- match.arg(tail)
   call_capture <- match.call()
+  null_kind <- if (!is.null(null_fun)) "custom" else null
 
   if (!is.null(two_sided)) {
     if (isTRUE(two_sided) && tail == "pos") tail <- "two"
@@ -128,6 +131,7 @@ octree_scan_fwer <- function(stat_vol,
                    n_perm, null_spec$n_perm))
     }
     null_fun <- null_spec$draw
+    null_kind <- null_spec$kind
   } else if (is.null(n_perm)) {
     n_perm <- 1000L
   }
@@ -238,7 +242,7 @@ octree_scan_fwer <- function(stat_vol,
     null_max = M_null,
     params = list(
       alpha = alpha, tail = tail,
-      n_perm = n_perm, side = side, null = null,
+      n_perm = n_perm, side = side, null = null_kind,
       fwhm_vox = fwhm_vox, fwhm_mm = fwhm_mm
     ),
     call = call_capture,

@@ -16,7 +16,9 @@
 #'   or vector of values to search over.
 #' @param prior_eta Mixing weight for prior smoothing with uniform mass.
 #'   Values in \[0, 1\], where 0 is uniform and 1 is the raw prior.
-#' @param null_spec Reserved null specification argument for API consistency.
+#' @param null_spec Reserved; must be `NULL`. Supplied specifications are not
+#'   supported and cause an error. Use [octree_scan_fwer()] or
+#'   [octree_scan_stepdown()] to calibrate an octree scan with a supplied null.
 #' @param n_perm Number of permutations for null distribution (default 1000)
 #' @param method Inference method: "stepdown" (Westfall-Young) or
 #'   "hierarchical" (alpha-spending only)
@@ -100,6 +102,11 @@ hier_scan <- function(stat_vol,
   method <- match.arg(method)
   tail <- match.arg(tail)
   call_capture <- match.call()
+
+  if (!is.null(null_spec)) {
+    stop("null_spec is not supported by hier_scan(); use octree_scan_fwer() ",
+         "or octree_scan_stepdown() for a supplied null specification.")
+  }
 
   if (!is.null(two_sided) && isTRUE(two_sided) && tail == "pos") tail <- "two"
   z_vol <- stat_vol
