@@ -1,7 +1,7 @@
 Package: neurothresh
 Type: Package
 Title: Neuroimaging Statistical Thresholding with LR-MFT
-Version: 0.1.0
+Version: 0.1.0.9001
 Authors@R: person("Brad", "Buchsbaum", email = "brad.buchsbaum@gmail.com",
                   role = c("aut", "cre"))
 Author: Brad Buchsbaum [aut, cre]
