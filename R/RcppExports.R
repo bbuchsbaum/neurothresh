@@ -53,3 +53,15 @@ gaussian_smooth3d_cpp <- function(vol, dims, sigma_xyz, radius_mult = 3L) {
     .Call(`_neurothresh_gaussian_smooth3d_cpp`, vol, dims, sigma_xyz, radius_mult)
 }
 
+tfce_masked_cpp <- function(z, dims, mask_idx, H, E, dh, connectivity, tail) {
+    .Call(`_neurothresh_tfce_masked_cpp`, z, dims, mask_idx, H, E, dh, connectivity, tail)
+}
+
+tfce_max_batch_cpp <- function(Z, dims, mask_idx, H, E, dh, connectivity, tail) {
+    .Call(`_neurothresh_tfce_max_batch_cpp`, Z, dims, mask_idx, H, E, dh, connectivity, tail)
+}
+
+cluster_label_cpp <- function(x, dims, mask_idx, u, connectivity) {
+    .Call(`_neurothresh_cluster_label_cpp`, x, dims, mask_idx, u, connectivity)
+}
+

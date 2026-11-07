@@ -337,9 +337,33 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
   as.numeric(abs(vox_size[1:3]))
 }
 
-#' Find connected components (simple 6-connectivity)
+#' Find connected components
+#'
+#' Compiled union-find labelling of the `TRUE` voxels of a 3D grid. Clusters
+#' are numbered in order of their smallest linear index, as in the reference
+#' implementation [.find_clusters_r()].
+#' @param binary_mask Logical vector/array over the grid.
+#' @param dims Grid dimensions.
+#' @param connectivity `6`, `18` or `26`.
+#' @return `list(labels, sizes)`: integer labels over the grid (0 = none) and
+#'   integer cluster sizes.
 #' @keywords internal
-.find_clusters <- function(binary_mask, dims) {
+.find_clusters <- function(binary_mask, dims, connectivity = 6L) {
+  n <- prod(dims)
+  labels <- integer(n)
+  idx <- which(as.logical(binary_mask))
+  if (length(idx) == 0L) {
+    return(list(labels = labels, sizes = integer(0)))
+  }
+  res <- cluster_label_cpp(rep(1, length(idx)), as.integer(dims),
+                           as.integer(idx), 0.5, as.integer(connectivity))
+  labels[idx] <- res$labels
+  list(labels = labels, sizes = res$sizes)
+}
+
+#' Reference breadth-first connected-component labelling (pure R)
+#' @keywords internal
+.find_clusters_r <- function(binary_mask, dims, connectivity = 6L) {
   n <- prod(dims)
   labels <- integer(n)
   current_label <- 0
@@ -361,7 +385,7 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
       current <- queue[1]
       queue <- queue[-1]
 
-      neighbors <- .get_neighbors_6(current, dims)
+      neighbors <- .get_neighbors(current, dims, connectivity)
       neighbors <- neighbors[binary_mask[neighbors] & labels[neighbors] == 0]
 
       labels[neighbors] <- current_label
@@ -374,6 +398,24 @@ rft_cluster_fwer <- function(stat_vol, mask = NULL, alpha = 0.05,
   sizes <- tabulate(labels[labels > 0])
 
   list(labels = labels, sizes = sizes)
+}
+
+#' Grid neighbours of one voxel (pure R reference)
+#' @keywords internal
+.get_neighbors <- function(idx, dims, connectivity = 6L) {
+  if (connectivity == 6L) return(.get_neighbors_6(idx, dims))
+  idx0 <- idx - 1
+  i <- idx0 %% dims[1]
+  j <- (idx0 %/% dims[1]) %% dims[2]
+  k <- idx0 %/% (dims[1] * dims[2])
+  off <- as.matrix(expand.grid(di = -1:1, dj = -1:1, dk = -1:1))
+  m <- rowSums(abs(off))
+  off <- off[m > 0 & m <= if (connectivity == 18L) 2 else 3, , drop = FALSE]
+  ii <- i + off[, 1]
+  jj <- j + off[, 2]
+  kk <- k + off[, 3]
+  ok <- ii >= 0 & ii < dims[1] & jj >= 0 & jj < dims[2] & kk >= 0 & kk < dims[3]
+  as.integer(ii[ok] + dims[1] * (jj[ok] + dims[2] * kk[ok]) + 1)
 }
 
 #' Get 6-connected neighbors

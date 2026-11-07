@@ -14,7 +14,8 @@
   alpha,
   draw_fun,
   null_kind,
-  call_capture
+  call_capture,
+  connectivity = 6L
 )
 }
 \description{

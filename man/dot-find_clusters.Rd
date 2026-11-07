@@ -2,11 +2,24 @@
 % Please edit documentation in R/rft.R
 \name{.find_clusters}
 \alias{.find_clusters}
-\title{Find connected components (simple 6-connectivity)}
+\title{Find connected components}
 \usage{
-.find_clusters(binary_mask, dims)
+.find_clusters(binary_mask, dims, connectivity = 6L)
+}
+\arguments{
+\item{binary_mask}{Logical vector/array over the grid.}
+
+\item{dims}{Grid dimensions.}
+
+\item{connectivity}{\code{6}, \code{18} or \code{26}.}
+}
+\value{
+\code{list(labels, sizes)}: integer labels over the grid (0 = none) and
+integer cluster sizes.
 }
 \description{
-Find connected components (simple 6-connectivity)
+Compiled union-find labelling of the \code{TRUE} voxels of a 3D grid. Clusters
+are numbered in order of their smallest linear index, as in the reference
+implementation \code{\link[=.find_clusters_r]{.find_clusters_r()}}.
 }
 \keyword{internal}

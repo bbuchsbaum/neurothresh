@@ -23,6 +23,7 @@ export(hier_scan)
 export(is_lisa_filter)
 export(is_null_spec)
 export(is_smoothness)
+export(label_clusters)
 export(lisa)
 export(lisa_apply_filter)
 export(lisa_bilateral)
@@ -82,10 +83,12 @@ export(validate_null_spec)
 export(wy_stepdown)
 importFrom(Rcpp,evalCpp)
 importFrom(methods,new)
-importFrom(stats,pnorm)
-importFrom(stats,pt)
-importFrom(stats,qnorm)
-importFrom(stats,qt)
-importFrom(stats,quantile)
-importFrom(stats,uniroot)
+importFrom(stats,
+  pnorm,
+  pt,
+  qnorm,
+  qt,
+  quantile,
+  uniroot
+)
 useDynLib(neurothresh, .registration=TRUE)

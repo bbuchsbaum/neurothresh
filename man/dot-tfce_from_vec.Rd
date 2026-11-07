@@ -4,9 +4,11 @@
 \alias{.tfce_from_vec}
 \title{TFCE from vector (internal helper)}
 \usage{
-.tfce_from_vec(z_vec, dims, mask, H, E, dh, tail)
+.tfce_from_vec(z_vec, dims, mask, H, E, dh, tail, connectivity = 6L)
 }
 \description{
-TFCE from vector (internal helper)
+Compiled TFCE of a full-grid vector restricted to \code{mask}. Values outside
+the mask, negative values (after the tail flip) and non-finite values never
+exceed a height. Returns a full-grid vector with zeros outside the mask.
 }
 \keyword{internal}
