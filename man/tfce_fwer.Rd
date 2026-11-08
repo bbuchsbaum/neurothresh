@@ -16,7 +16,8 @@ tfce_fwer(
   null_fun = NULL,
   n_perm = NULL,
   allow_voxel_signflip = FALSE,
-  seed = NULL
+  seed = NULL,
+  connectivity = 6L
 )
 }
 \arguments{
@@ -51,6 +52,9 @@ anti-conservative for spatially correlated fields.}
 
 \item{seed}{Optional random seed; affects only RNG state outside \code{null_spec}
 (the spec itself is deterministic by index).}
+
+\item{connectivity}{Voxel neighbourhood (\code{6}, \code{18} or \code{26}); see
+\code{\link[=tfce_transform]{tfce_transform()}}.}
 }
 \value{
 A \code{\link{neurothresh_result}} with \code{method = "tfce_fwer"}. \code{pvals} is the
@@ -64,6 +68,13 @@ subject-level inference build one with \code{\link[=null_one_sample]{null_one_sa
 \code{\link[=null_two_sample]{null_two_sample()}} / \code{\link[=null_glm]{null_glm()}}. For a fast voxel-level fallback use
 \code{\link[=null_voxel_signflip]{null_voxel_signflip()}} (note: voxel sign-flips are calibrated only when
 the field is uncorrelated under the null).
+}
+\details{
+Null draws are requested from \code{null_spec} one at a time and transformed in
+batches by compiled code. The corrected p-value of voxel \code{v} is
+\verb{(1 + #\{b : max_null[b] >= tfce[v]\}) / (1 + n_perm)}; for \code{tail = "two"}
+both the observed score and each null maximum are taken over the positive
+and negative tails.
 }
 \seealso{
 \code{\link[=tfce_transform]{tfce_transform()}}, \code{\link[=null_voxel_signflip]{null_voxel_signflip()}}, \code{\link[=null_one_sample]{null_one_sample()}}.

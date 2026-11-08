@@ -214,6 +214,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// tfce_masked_cpp
+NumericVector tfce_masked_cpp(const NumericVector& z, const IntegerVector& dims, const IntegerVector& mask_idx, double H, double E, double dh, int connectivity, int tail);
+RcppExport SEXP _neurothresh_tfce_masked_cpp(SEXP zSEXP, SEXP dimsSEXP, SEXP mask_idxSEXP, SEXP HSEXP, SEXP ESEXP, SEXP dhSEXP, SEXP connectivitySEXP, SEXP tailSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type z(zSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type dims(dimsSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type mask_idx(mask_idxSEXP);
+    Rcpp::traits::input_parameter< double >::type H(HSEXP);
+    Rcpp::traits::input_parameter< double >::type E(ESEXP);
+    Rcpp::traits::input_parameter< double >::type dh(dhSEXP);
+    Rcpp::traits::input_parameter< int >::type connectivity(connectivitySEXP);
+    Rcpp::traits::input_parameter< int >::type tail(tailSEXP);
+    rcpp_result_gen = Rcpp::wrap(tfce_masked_cpp(z, dims, mask_idx, H, E, dh, connectivity, tail));
+    return rcpp_result_gen;
+END_RCPP
+}
+// tfce_max_batch_cpp
+NumericVector tfce_max_batch_cpp(const NumericMatrix& Z, const IntegerVector& dims, const IntegerVector& mask_idx, double H, double E, double dh, int connectivity, int tail);
+RcppExport SEXP _neurothresh_tfce_max_batch_cpp(SEXP ZSEXP, SEXP dimsSEXP, SEXP mask_idxSEXP, SEXP HSEXP, SEXP ESEXP, SEXP dhSEXP, SEXP connectivitySEXP, SEXP tailSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const NumericMatrix& >::type Z(ZSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type dims(dimsSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type mask_idx(mask_idxSEXP);
+    Rcpp::traits::input_parameter< double >::type H(HSEXP);
+    Rcpp::traits::input_parameter< double >::type E(ESEXP);
+    Rcpp::traits::input_parameter< double >::type dh(dhSEXP);
+    Rcpp::traits::input_parameter< int >::type connectivity(connectivitySEXP);
+    Rcpp::traits::input_parameter< int >::type tail(tailSEXP);
+    rcpp_result_gen = Rcpp::wrap(tfce_max_batch_cpp(Z, dims, mask_idx, H, E, dh, connectivity, tail));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cluster_label_cpp
+Rcpp::List cluster_label_cpp(const NumericVector& x, const IntegerVector& dims, const IntegerVector& mask_idx, double u, int connectivity);
+RcppExport SEXP _neurothresh_cluster_label_cpp(SEXP xSEXP, SEXP dimsSEXP, SEXP mask_idxSEXP, SEXP uSEXP, SEXP connectivitySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::traits::input_parameter< const NumericVector& >::type x(xSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type dims(dimsSEXP);
+    Rcpp::traits::input_parameter< const IntegerVector& >::type mask_idx(mask_idxSEXP);
+    Rcpp::traits::input_parameter< double >::type u(uSEXP);
+    Rcpp::traits::input_parameter< int >::type connectivity(connectivitySEXP);
+    rcpp_result_gen = Rcpp::wrap(cluster_label_cpp(x, dims, mask_idx, u, connectivity));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_neurothresh_acf_sign_lag_mean_cpp", (DL_FUNC) &_neurothresh_acf_sign_lag_mean_cpp, 5},
@@ -229,6 +277,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_neurothresh_pyramid_max_u0_signflip_cpp", (DL_FUNC) &_neurothresh_pyramid_max_u0_signflip_cpp, 7},
     {"_neurothresh_pyramid_scores_u0_cpp", (DL_FUNC) &_neurothresh_pyramid_scores_u0_cpp, 7},
     {"_neurothresh_gaussian_smooth3d_cpp", (DL_FUNC) &_neurothresh_gaussian_smooth3d_cpp, 4},
+    {"_neurothresh_tfce_masked_cpp", (DL_FUNC) &_neurothresh_tfce_masked_cpp, 8},
+    {"_neurothresh_tfce_max_batch_cpp", (DL_FUNC) &_neurothresh_tfce_max_batch_cpp, 8},
+    {"_neurothresh_cluster_label_cpp", (DL_FUNC) &_neurothresh_cluster_label_cpp, 5},
     {NULL, NULL, 0}
 };
 

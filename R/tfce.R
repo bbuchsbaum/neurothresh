@@ -21,6 +21,18 @@ NULL
 #' @param dh Threshold increment (default 0.1).
 #' @param tail One of `"pos"`, `"neg"`, `"two"`. For `"two"` the result is
 #'   the per-voxel maximum of the positive- and negative-tail TFCE maps.
+#' @param connectivity Voxel neighbourhood used to form clusters at each
+#'   height: `6` (faces, the default), `18` (faces and edges) or `26` (faces,
+#'   edges and corners; the FSL convention).
+#'
+#' @details
+#' The integral is evaluated at heights `seq(0, h_max, by = dh)` (excluding
+#' 0), where `h_max` is the largest in-mask value of the tested tail; each
+#' height contributes `e^E * h^H * dh`. Voxels outside `mask` and non-finite
+#' values never exceed a height. The transform runs in compiled code
+#' (union-find over a neighbour graph of the mask), adding voxels from the
+#' top height down, so its cost grows with the number of in-mask voxels times
+#' the mean number of heights each voxel reaches.
 #'
 #' @return Volume (same type as `stat_vol`) with TFCE-transformed values.
 #'
@@ -29,8 +41,10 @@ NULL
 #' @export
 tfce_transform <- function(stat_vol, mask = NULL,
                            H = 2.0, E = 0.5, dh = 0.1,
-                           tail = c("pos", "neg", "two")) {
+                           tail = c("pos", "neg", "two"),
+                           connectivity = 6L) {
   tail <- match.arg(tail)
+  connectivity <- .check_connectivity(connectivity)
 
   if (is.null(mask)) {
     mask <- is.finite(as.numeric(stat_vol))
@@ -39,12 +53,15 @@ tfce_transform <- function(stat_vol, mask = NULL,
   dims <- dim(stat_vol)
 
   if (tail == "two") {
-    pos_vec <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, "pos")
-    neg_vec <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, "neg")
+    pos_vec <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, "pos",
+                              connectivity)
+    neg_vec <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, "neg",
+                              connectivity)
     return(.array_to_vol(pmax(pos_vec, neg_vec), dims, stat_vol))
   }
 
-  vals <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, tail)
+  vals <- .tfce_from_vec(as.numeric(stat_vol), dims, mask, H, E, dh, tail,
+                         connectivity)
   .array_to_vol(vals, dims, stat_vol)
 }
 
@@ -77,6 +94,15 @@ tfce_transform <- function(stat_vol, mask = NULL,
 #'   anti-conservative for spatially correlated fields.
 #' @param seed Optional random seed; affects only RNG state outside `null_spec`
 #'   (the spec itself is deterministic by index).
+#' @param connectivity Voxel neighbourhood (`6`, `18` or `26`); see
+#'   [tfce_transform()].
+#'
+#' @details
+#' Null draws are requested from `null_spec` one at a time and transformed in
+#' batches by compiled code. The corrected p-value of voxel `v` is
+#' `(1 + #{b : max_null[b] >= tfce[v]}) / (1 + n_perm)`; for `tail = "two"`
+#' both the observed score and each null maximum are taken over the positive
+#' and negative tails.
 #'
 #' @return A [`neurothresh_result`] with `method = "tfce_fwer"`. `pvals` is the
 #'   voxelwise FWER-corrected p-value volume; `extras$tfce` holds the observed
@@ -89,8 +115,9 @@ tfce_fwer <- function(stat_vol, mask = NULL,
                       H = 2.0, E = 0.5, dh = 0.1,
                       null_spec = NULL, null_fun = NULL, n_perm = NULL,
                       allow_voxel_signflip = FALSE,
-                      seed = NULL) {
+                      seed = NULL, connectivity = 6L) {
   tail <- match.arg(tail)
+  connectivity <- .check_connectivity(connectivity)
   call_capture <- match.call()
 
   if (!is.null(seed)) set.seed(seed)
@@ -138,27 +165,23 @@ tfce_fwer <- function(stat_vol, mask = NULL,
 
   if (tail == "two") {
     return(.tfce_fwer_twosided(stat_vol, mask, n_perm, H, E, dh, alpha,
-                                draw_fun, null_kind, call_capture))
+                                draw_fun, null_kind, call_capture,
+                                connectivity))
   }
 
-  tfce_obs <- tfce_transform(stat_vol, mask, H, E, dh, tail = tail)
+  tfce_obs <- tfce_transform(stat_vol, mask, H, E, dh, tail = tail,
+                             connectivity = connectivity)
   tfce_obs_vec <- as.numeric(tfce_obs)
 
-  max_null <- numeric(n_perm)
-  for (b in seq_len(n_perm)) {
-    z_perm <- .coerce_null_draw(draw_fun(b), n_full = n, mask_idx = mask_idx)
-    tfce_perm <- .tfce_from_vec(z_perm, dims, mask, H, E, dh, tail)
-    max_null[b] <- max(tfce_perm[mask_idx], na.rm = TRUE)
-  }
+  max_null <- .tfce_null_max(draw_fun, n_perm, dims, mask_idx, H, E, dh,
+                             tail, connectivity)
 
   threshold <- fwer_threshold_from_maxnull(max_null, alpha = alpha)
   reject_vec <- tfce_obs_vec > threshold & mask
   reject <- array(reject_vec, dim = dims)
 
   p_corr <- rep(1, n)
-  for (v in mask_idx) {
-    p_corr[v] <- (1 + sum(max_null >= tfce_obs_vec[v])) / (n_perm + 1)
-  }
+  p_corr[mask_idx] <- .maxnull_pvals(tfce_obs_vec[mask_idx], max_null)
   pvals <- .array_to_vol(p_corr, dims, stat_vol)
 
   out <- new_neurothresh_result(
@@ -171,7 +194,8 @@ tfce_fwer <- function(stat_vol, mask = NULL,
     null_max = max_null,
     params = list(alpha = alpha, tail = tail, H = H, E = E, dh = dh,
                   n_perm = n_perm, null_kind = null_kind,
-                  allow_voxel_signflip = allow_voxel_signflip),
+                  allow_voxel_signflip = allow_voxel_signflip,
+                  connectivity = connectivity),
     call = call_capture,
     extras = list(tfce = tfce_obs)
   )
@@ -181,31 +205,27 @@ tfce_fwer <- function(stat_vol, mask = NULL,
 #' Two-sided TFCE FWER
 #' @keywords internal
 .tfce_fwer_twosided <- function(stat_vol, mask, n_perm, H, E, dh, alpha,
-                                draw_fun, null_kind, call_capture) {
+                                draw_fun, null_kind, call_capture,
+                                connectivity = 6L) {
   dims <- dim(stat_vol)
   n <- prod(dims)
   mask_idx <- which(mask)
 
-  tfce_pos <- as.numeric(tfce_transform(stat_vol, mask, H, E, dh, tail = "pos"))
-  tfce_neg <- as.numeric(tfce_transform(stat_vol, mask, H, E, dh, tail = "neg"))
+  tfce_pos <- as.numeric(tfce_transform(stat_vol, mask, H, E, dh, tail = "pos",
+                                        connectivity = connectivity))
+  tfce_neg <- as.numeric(tfce_transform(stat_vol, mask, H, E, dh, tail = "neg",
+                                        connectivity = connectivity))
   tfce_2   <- pmax(tfce_pos, tfce_neg)
 
-  max_null <- numeric(n_perm)
-  for (b in seq_len(n_perm)) {
-    z_perm <- .coerce_null_draw(draw_fun(b), n_full = n, mask_idx = mask_idx)
-    tfce_p <- .tfce_from_vec(z_perm, dims, mask, H, E, dh, "pos")
-    tfce_n <- .tfce_from_vec(-z_perm, dims, mask, H, E, dh, "pos")
-    max_null[b] <- max(pmax(tfce_p, tfce_n)[mask_idx], na.rm = TRUE)
-  }
+  max_null <- .tfce_null_max(draw_fun, n_perm, dims, mask_idx, H, E, dh,
+                             "two", connectivity)
 
   threshold <- fwer_threshold_from_maxnull(max_null, alpha = alpha)
   reject_vec <- tfce_2 > threshold & mask
   reject <- array(reject_vec, dim = dims)
 
   p_corr <- rep(1, n)
-  for (v in mask_idx) {
-    p_corr[v] <- (1 + sum(max_null >= tfce_2[v])) / (n_perm + 1)
-  }
+  p_corr[mask_idx] <- .maxnull_pvals(tfce_2[mask_idx], max_null)
   pvals <- .array_to_vol(p_corr, dims, stat_vol)
 
   reject_pos <- .array_to_vol(tfce_pos > threshold & tfce_pos >= tfce_neg & mask, dims, stat_vol)
@@ -220,7 +240,8 @@ tfce_fwer <- function(stat_vol, mask = NULL,
     pvals = pvals,
     null_max = max_null,
     params = list(alpha = alpha, tail = "two", H = H, E = E, dh = dh,
-                  n_perm = n_perm, null_kind = null_kind),
+                  n_perm = n_perm, null_kind = null_kind,
+                  connectivity = connectivity),
     call = call_capture,
     extras = list(
       tfce_pos = .array_to_vol(tfce_pos, dims, stat_vol),
@@ -247,8 +268,33 @@ tfce_fwer <- function(stat_vol, mask = NULL,
 }
 
 #' TFCE from vector (internal helper)
+#'
+#' Compiled TFCE of a full-grid vector restricted to `mask`. Values outside
+#' the mask, negative values (after the tail flip) and non-finite values never
+#' exceed a height. Returns a full-grid vector with zeros outside the mask.
 #' @keywords internal
-.tfce_from_vec <- function(z_vec, dims, mask, H, E, dh, tail) {
+.tfce_from_vec <- function(z_vec, dims, mask, H, E, dh, tail,
+                           connectivity = 6L) {
+  n <- prod(dims)
+  mask_idx <- which(as.logical(mask))
+  out <- rep(0, n)
+  if (!length(mask_idx)) return(out)
+  out[mask_idx] <- tfce_masked_cpp(
+    as.numeric(z_vec)[mask_idx], as.integer(dims), as.integer(mask_idx),
+    as.numeric(H), as.numeric(E), as.numeric(dh), as.integer(connectivity),
+    .tfce_tail_code(tail)
+  )
+  out
+}
+
+#' Reference R implementation of the TFCE transform
+#'
+#' The original pure-R algorithm: re-labels clusters at every height with
+#' [.find_clusters_r()]. Kept as the reference that the compiled
+#' implementation is tested against; it is far too slow for permutation use.
+#' @keywords internal
+.tfce_from_vec_r <- function(z_vec, dims, mask, H, E, dh, tail,
+                             connectivity = 6L) {
   z <- z_vec
   if (tail == "neg") z <- -z
 
@@ -265,7 +311,8 @@ tfce_fwer <- function(stat_vol, mask = NULL,
   for (h in hs) {
     if (h == 0) next
     supra <- z >= h
-    clusters <- .find_clusters(supra, dims)
+    supra[is.na(supra)] <- FALSE
+    clusters <- .find_clusters_r(supra, dims, connectivity)
     if (length(clusters$sizes) == 0) next
 
     for (cid in seq_along(clusters$sizes)) {
@@ -276,6 +323,63 @@ tfce_fwer <- function(stat_vol, mask = NULL,
   }
 
   tfce_vals
+}
+
+#' @keywords internal
+#' @noRd
+.tfce_tail_code <- function(tail) {
+  switch(tail, pos = 1L, neg = -1L, two = 0L,
+         stop("tail must be 'pos', 'neg' or 'two'"))
+}
+
+#' @keywords internal
+#' @noRd
+.check_connectivity <- function(connectivity) {
+  connectivity <- suppressWarnings(as.integer(connectivity))
+  if (length(connectivity) != 1L || is.na(connectivity) ||
+      !connectivity %in% c(6L, 18L, 26L)) {
+    stop("connectivity must be 6, 18 or 26", call. = FALSE)
+  }
+  connectivity
+}
+
+#' Null distribution of the maximum TFCE
+#'
+#' Requests each null draw from `draw_fun`, gathers draws in batches and
+#' transforms each batch in compiled code (one neighbour graph per batch).
+#' @keywords internal
+#' @noRd
+.tfce_null_max <- function(draw_fun, n_perm, dims, mask_idx, H, E, dh, tail,
+                           connectivity, batch = 64L) {
+  n <- prod(dims)
+  max_null <- numeric(n_perm)
+  if (!length(mask_idx)) return(max_null)
+  tail_code <- .tfce_tail_code(tail)
+  starts <- seq.int(1L, n_perm, by = batch)
+  for (s0 in starts) {
+    bs <- seq.int(s0, min(n_perm, s0 + batch - 1L))
+    Z <- vapply(bs, function(b) {
+      .coerce_null_draw(draw_fun(b), n_full = n, mask_idx = mask_idx)[mask_idx]
+    }, numeric(length(mask_idx)))
+    if (!is.matrix(Z)) Z <- matrix(Z, nrow = length(mask_idx))
+    max_null[bs] <- tfce_max_batch_cpp(
+      Z, as.integer(dims), as.integer(mask_idx), as.numeric(H), as.numeric(E),
+      as.numeric(dh), as.integer(connectivity), tail_code
+    )
+  }
+  max_null
+}
+
+#' Max-statistic FWER p-values
+#'
+#' `(1 + #{max_null >= obs}) / (1 + length(max_null))` for each observed value,
+#' computed by sorting the null once.
+#' @keywords internal
+#' @noRd
+.maxnull_pvals <- function(obs, max_null) {
+  B <- length(max_null)
+  below <- findInterval(obs, sort(max_null), left.open = TRUE)
+  (1 + B - below) / (B + 1)
 }
 
 #' Convert array to vol-like object (placeholder)

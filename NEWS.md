@@ -6,6 +6,33 @@ This release regularises every public inference method behind a single
 canonical signature. The plan and motivation live in
 `specs/api-consistency-plan.md`.
 
+### Compiled TFCE and cluster labelling
+
+- `tfce_transform()`, `tfce_fwer()` and the cluster labeller behind
+  `cluster_fdr()` and the RFT cluster methods now run in C++ (union-find over
+  a neighbour graph of the mask). TFCE adds voxels from the top height down
+  instead of re-labelling clusters at every height. Results equal the
+  previous R implementation to floating-point rounding (relative difference
+  below 1e-15 in the tests); the R versions remain as internal references
+  (`.tfce_from_vec_r()`, `.find_clusters_r()`). On a 91 x 109 x 91 grid with a
+  243,515-voxel mask, one-tailed TFCE of one map fell from 11.6 s to about
+  0.01 s, and a two-sided null draw costs about 0.016 s
+  (`inst/bench/bench_tfce.R`).
+- `tfce_transform()` and `tfce_fwer()` gain `connectivity = 6` (default,
+  unchanged), `18` or `26`.
+- `tfce_fwer()` transforms null draws in batches with one neighbour graph per
+  batch and computes corrected p-values from the sorted null maxima.
+- New exported `label_clusters(stat_vol, threshold, mask, tail,
+  connectivity)` returns cluster labels and a table of extent, excess mass
+  (sum of `stat - threshold`), peak value and peak coordinates.
+- The core is a dependency-free header, `inst/include/neurothresh/
+  spatial_core.h`, that other packages can vendor or include; its functions
+  allocate no R memory and are safe to call from OpenMP threads with
+  per-thread workspaces.
+- Non-finite values inside the mask are now treated as below every threshold
+  by the TFCE transform. The R version could propagate `NA` into cluster
+  labelling.
+
 ### Inference fixes
 
 - Negative-tail permutation cluster FDR now transforms null draws in the same

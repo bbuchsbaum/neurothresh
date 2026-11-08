@@ -10,7 +10,8 @@ tfce_transform(
   H = 2,
   E = 0.5,
   dh = 0.1,
-  tail = c("pos", "neg", "two")
+  tail = c("pos", "neg", "two"),
+  connectivity = 6L
 )
 }
 \arguments{
@@ -27,6 +28,10 @@ tfce_transform(
 
 \item{tail}{One of \code{"pos"}, \code{"neg"}, \code{"two"}. For \code{"two"} the result is
 the per-voxel maximum of the positive- and negative-tail TFCE maps.}
+
+\item{connectivity}{Voxel neighbourhood used to form clusters at each
+height: \code{6} (faces, the default), \code{18} (faces and edges) or \code{26} (faces,
+edges and corners; the FSL convention).}
 }
 \value{
 Volume (same type as \code{stat_vol}) with TFCE-transformed values.
@@ -38,6 +43,14 @@ Computes the Threshold-Free Cluster Enhancement transform:
 \details{
 where \eqn{e(h)} is the extent of the cluster containing voxel \eqn{v}
 at threshold \eqn{h}.
+
+The integral is evaluated at heights \code{seq(0, h_max, by = dh)} (excluding
+0), where \code{h_max} is the largest in-mask value of the tested tail; each
+height contributes \code{e^E * h^H * dh}. Voxels outside \code{mask} and non-finite
+values never exceed a height. The transform runs in compiled code
+(union-find over a neighbour graph of the mask), adding voxels from the
+top height down, so its cost grows with the number of in-mask voxels times
+the mean number of heights each voxel reaches.
 }
 \references{
 Smith & Nichols (2009), NeuroImage 44(1), 83-98.
